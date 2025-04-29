@@ -1,9 +1,10 @@
 "use client";
 
 import React from "react";
-import Image from "next/image";
-import logo from "@/assets/jayantkageri.png";
 import Link from "next/link";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import logo from "@/assets/jayantkageri.png";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -25,9 +26,11 @@ export default function Navbar() {
     },
   ];
 
+  const path = usePathname();
+
   return (
     <>
-      <nav className="relative rounded-full mt-2 mx-2 bg-secondary backdrop-blur-3xl backdrop-saturate-100 ">
+      <nav className="relative rounded-full mt-2 mx-2 bg-secondary select-none">
         <div className="container px-6 py-2 mx-auto md:flex md:justify-between md:items-center">
           <div className="flex items-center justify-between">
             <Link href="/">
@@ -93,13 +96,16 @@ export default function Navbar() {
                 <Link
                   key={page.path}
                   href={`/${page.path}`}
-                  className="my-2 transition-colors duration-300 transform text-gray-100 hover:text-gray-300 md-hover-animation md:mx-4 md:my-0"
+                  className={`my-2 transition-colors duration-300 transform text-gray-100 hover:text-gray-300 md-hover-animation ${
+                    `/${page.path}` == path &&
+                    "underline-offset-4 underline decoration-red-600"
+                  } md:mx-4 md:my-0`}
                 >
                   {page.title}
                 </Link>
               ))}
             </div>
-
+            {/* 
             <div className="flex justify-center md:block">
               <Link
                 className="relative transition-colors duration-300 transform text-gray-200 "
@@ -122,7 +128,7 @@ export default function Navbar() {
                   </svg>
                 </button>
               </Link>
-            </div>
+            </div> */}
           </div>
         </div>
       </nav>
