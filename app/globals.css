@@ -58,3 +58,12 @@
     transform-origin: bottom left;
   }
 }
+
+.w-md-editor,
+.w-md-editor * {
+  font-family: inherit;
+  color: inherit;
+  line-height: normal;
+  background-color: inherit;
+  box-sizing: border-box;
+}

@@ -22,9 +22,10 @@ export default function Home() {
         <div className="md:w-1/2">
           <MDEditor
             value={value}
-            className="prose max-w-none"
+            className="prose max-w-full min-h-fit"
             onChange={(e) => setValue(e || "")}
-            preview="edit"
+            preview="live"
+            data-color-mode="dark"
             commands={[
               commands.bold,
               commands.italic,
@@ -47,6 +48,7 @@ export default function Home() {
               commands.codePreview,
             ]}
           />
+
           <button className="flex items-center px-4 py-2 mt-3 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-blue-700 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80 cursor-pointer w-full justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
