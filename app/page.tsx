@@ -2,6 +2,8 @@
 
 import React from "react";
 import MDEditor, { commands } from "@uiw/react-md-editor";
+import toast from "react-hot-toast";
+import { createPage } from "@/lib/actions/pages";
 
 export default function Home() {
   const [value, setValue] = React.useState("");
@@ -49,7 +51,15 @@ export default function Home() {
             ]}
           />
 
-          <button className="flex items-center px-4 py-2 mt-3 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-blue-700 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80 cursor-pointer w-full justify-center">
+          <button
+            type="submit"
+            className="flex items-center px-4 py-2 mt-3 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-blue-700 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring focus:ring-blue-300 focus:ring-opacity-80 cursor-pointer w-full justify-center"
+            onClick={(e) => {
+              e.preventDefault();
+              createPage(value);
+              toast.success("Created");
+            }}
+          >
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"

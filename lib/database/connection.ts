@@ -1,7 +1,15 @@
 // lib/mongoose-connect.ts
 import mongoose from "mongoose";
 
-const MONGODB_URI = "mongodb://127.0.0.1:27017/";
+declare global {
+  // eslint-disable-next-line no-var
+  var mongoose: {
+    conn: mongoose.Connection | null;
+    promise: Promise<mongoose.Connection> | null;
+  };
+}
+
+const MONGODB_URI = "mongodb://127.0.0.1:27017/revamp";
 
 if (!MONGODB_URI) {
   throw new Error("Please define the MONGODB_URI environment variable");
@@ -13,7 +21,7 @@ if (!global.mongoose) {
 }
 
 // Connection function
-async function dbConnect() {
+async function dbConnect(): Promise<mongoose.Connection> {
   if (global.mongoose.conn) {
     return global.mongoose.conn;
   }
@@ -23,7 +31,9 @@ async function dbConnect() {
       bufferCommands: false,
     };
 
-    global.mongoose.promise = mongoose.connect(MONGODB_URI, opts);
+    global.mongoose.promise = mongoose
+      .connect(MONGODB_URI, opts)
+      .then((m) => m.connection);
   }
 
   try {
