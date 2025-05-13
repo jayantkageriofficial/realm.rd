@@ -1,11 +1,14 @@
 import React from "react";
-import logo from "@/assets/logo.svg";
 import Image from "next/image";
+import logo from "@/assets/logo.svg";
 
 export default function Login() {
   return (
     <>
-      <div className="container flex items-center justify-center min-h-screen px-6 mx-auto">
+      <section
+        id="login"
+        className="container flex items-center justify-center min-h-screen px-6 mx-auto"
+      >
         <form className="w-full max-w-md">
           <Image className="w-auto h-8 sm:h-9" src={logo} alt="Logo" />
           {/* 
@@ -71,7 +74,7 @@ export default function Login() {
             </button>
           </div>
         </form>
-      </div>
+      </section>
     </>
   );
 }

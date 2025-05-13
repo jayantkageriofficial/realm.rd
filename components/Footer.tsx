@@ -1,11 +1,21 @@
 import React from "react";
+import Link from "next/link";
+import Image from "next/image";
+import logo from "@/assets/logo.svg";
 
 export default function Footer() {
   const year = new Date().getFullYear();
   return (
     <>
       <footer className="bg-secondary rounded-full mx-2 mb-2 py-4 select-none">
-        <div className="flex flex-col items-center sm:flex-row sm:justify-between">
+        <div className="flex items-center flex-row justify-between">
+          <Link href={"/"} className="mx-5">
+            <Image
+              className="h-4 md:h-5 w-auto scale-150 md:scale-125"
+              src={logo}
+              alt="Logo"
+            />
+          </Link>
           <p className="text-sm text-gray-300 px-4">
             © {year == 2025 ? 2025 : `2025 - ${year}`}{" "}
             <a
@@ -13,6 +23,7 @@ export default function Footer() {
               target="_blank"
               rel="noreferrer noopener"
               className={`transition-colors duration-300 transform copyright-hover-animation`}
+              tabIndex={-1}
             >
               Jayant Hegde Kageri
             </a>
