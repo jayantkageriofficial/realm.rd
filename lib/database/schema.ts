@@ -9,12 +9,6 @@ interface User {
   timestamp?: Date;
 }
 
-interface PasswordToken {
-  username: string;
-  token: string;
-  timestamp?: Date;
-}
-
 interface Page {
   id: string;
   title: string;
@@ -57,21 +51,6 @@ const DBUserSchema = new Schema<User>({
   },
   lastPasswordChange: {
     type: Date,
-    required: true,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-const DBPasswordToken = new Schema<PasswordToken>({
-  username: {
-    type: String,
-    required: true,
-  },
-  token: {
-    type: String,
     required: true,
   },
   timestamp: {
@@ -162,11 +141,10 @@ const DBNotesSchema = new Schema<Notes>({
 
 // Models
 const UserSchema = models.Users || model("Users", DBUserSchema);
-const PasswordTokenSchema = models.Tokens || model("Tokens", DBPasswordToken);
 const PageSchema = models.Page || model("Page", DBPageSchema);
 const TodoSchema = models.Todo || model("Todo", DBTodoSchema);
 const NotesSchema = models.Notes || model("Notes", DBNotesSchema);
 
-export { UserSchema, PasswordTokenSchema, PageSchema, TodoSchema, NotesSchema };
+export { UserSchema, PageSchema, TodoSchema, NotesSchema };
 
-export type { User, PasswordToken, Page, Todo, Notes };
+export type { User, Page, Todo, Notes };

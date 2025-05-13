@@ -8,7 +8,7 @@ export default function Footer() {
   return (
     <>
       <footer className="bg-secondary rounded-full mx-2 mb-2 py-4 select-none">
-        <div className="flex items-center flex-row justify-between">
+        <div className="flex items-center flex-row justify-start">
           <Link href={"/"} className="mx-5">
             <Image
               className="h-4 md:h-5 w-auto scale-150 md:scale-125"

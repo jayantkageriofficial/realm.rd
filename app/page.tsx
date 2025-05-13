@@ -12,13 +12,50 @@ export default function Home() {
     "0"
   )}-${String(date.getDate()).padStart(2, "0")}`;
 
-  const [value, setValue] = React.useState(init);
+  const [info, setInfo] = React.useState<{
+    value: string;
+    loading: boolean;
+  }>({
+    value: init,
+    loading: false,
+  });
 
   const normalizeInput = (str: string) =>
-    str
-      .trim()
-      .replace(/\s+/g, " ") // Replaces all whitespace (newlines, tabs, multiple spaces) with a single space
-      .replace(/ +/g, " "); // Optional: collapse multiple spaces
+    str.trim().replace(/\s+/g, " ").replace(/ +/g, " ");
+
+  const onSubmit = React.useCallback(
+    (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      setInfo({ ...info, loading: true });
+      if (
+        normalizeInput(info.value) == init ||
+        normalizeInput(info.value) == ""
+      ) {
+        setInfo({ ...info, loading: false });
+        return toast.error("No content provided");
+      }
+      createPage(info.value);
+      toast.success("Created a Page");
+      setInfo({
+        value: init,
+        loading: false,
+      });
+    },
+    [info, init]
+  );
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        onSubmit(e);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onSubmit]);
 
   return (
     <>
@@ -37,9 +74,15 @@ export default function Home() {
           </div>
           <div className="md:w-1/2">
             <MDEditor
-              value={value}
+              value={info.value}
               className="prose max-w-full min-h-fit"
-              onChange={(e) => setValue(e || "")}
+              onChange={(e) =>
+                !info.loading &&
+                setInfo({
+                  ...info,
+                  value: e || "",
+                })
+              }
               preview="live"
               data-color-mode="dark"
               tabIndex={-1}
@@ -69,16 +112,7 @@ export default function Home() {
             <button
               type="submit"
               className="flex items-center px-4 py-2 mt-3 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-red-600 rounded-lg hover:bg-red-500 focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-80 cursor-pointer w-full justify-center"
-              onClick={(e) => {
-                e.preventDefault();
-                if (
-                  normalizeInput(value) == init ||
-                  normalizeInput(value) == ""
-                )
-                  return toast.error("No Content");
-                createPage(value);
-                toast.success("Created");
-              }}
+              onClick={onSubmit}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"

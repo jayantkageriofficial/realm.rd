@@ -10,5 +10,5 @@ export async function createPage(context: string) {
   )}-${String(date.getDate()).padStart(2, "0")}`;
 
   const res = await create(date.getTime().toString(), title, context, date);
-  return res;
+  return res.id;
 }

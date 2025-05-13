@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import Config from "@/lib/constant";
 
 declare global {
   // eslint-disable-next-line no-var
@@ -8,29 +9,17 @@ declare global {
   };
 }
 
-const MONGODB_URI = "mongodb://127.0.0.1:27017/revamp";
+if (!global.mongoose) global.mongoose = { conn: null, promise: null };
 
-if (!MONGODB_URI) {
-  throw new Error("Please define the MONGODB_URI environment variable");
-}
-
-if (!global.mongoose) {
-  global.mongoose = { conn: null, promise: null };
-}
 async function dbConnect(): Promise<mongoose.Connection> {
-  if (global.mongoose.conn) {
-    return global.mongoose.conn;
-  }
+  if (global.mongoose.conn) return global.mongoose.conn;
 
-  if (!global.mongoose.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-
+  if (!global.mongoose.promise)
     global.mongoose.promise = mongoose
-      .connect(MONGODB_URI, opts)
+      .connect(Config.MONGODB_URI, {
+        bufferCommands: false,
+      })
       .then((m) => m.connection);
-  }
 
   try {
     global.mongoose.conn = await global.mongoose.promise;

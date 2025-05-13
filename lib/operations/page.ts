@@ -1,4 +1,4 @@
-import { PageSchema } from "@/lib/database/modals";
+import { PageSchema } from "@/lib/database/schema";
 
 export async function create(
   id: string,
