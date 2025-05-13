@@ -1,4 +1,3 @@
-// lib/mongoose-connect.ts
 import mongoose from "mongoose";
 
 declare global {
@@ -15,12 +14,9 @@ if (!MONGODB_URI) {
   throw new Error("Please define the MONGODB_URI environment variable");
 }
 
-// Initialize global mongoose object if not already defined
 if (!global.mongoose) {
   global.mongoose = { conn: null, promise: null };
 }
-
-// Connection function
 async function dbConnect(): Promise<mongoose.Connection> {
   if (global.mongoose.conn) {
     return global.mongoose.conn;
@@ -51,7 +47,6 @@ dbConnect()
   .then(() => console.info("MongoDB connected successfully"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
-// Graceful shutdown
 ["SIGTERM", "SIGINT"].forEach((signal) => {
   process.on(signal as NodeJS.Signals, async () => {
     if (global.mongoose.conn) {
