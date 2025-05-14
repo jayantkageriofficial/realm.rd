@@ -581,13 +581,6 @@
   dependencies:
     csstype "^3.0.2"
 
-"@types/request-ip@^0.0.41":
-  version "0.0.41"
-  resolved "https://registry.yarnpkg.com/@types/request-ip/-/request-ip-0.0.41.tgz#c22a3244df2573402989346062851b06b7a5ac4e"
-  integrity sha512-Qzz0PM2nSZej4lsLzzNfADIORZhhxO7PED0fXpg4FjXiHuJ/lMyUg+YFF5q8x9HPZH3Gl6N+NOM8QZjItNgGKg==
-  dependencies:
-    "@types/node" "*"
-
 "@types/unist@*", "@types/unist@^3.0.0":
   version "3.0.3"
   resolved "https://registry.yarnpkg.com/@types/unist/-/unist-3.0.3.tgz#acaab0f919ce69cce629c2d4ed2eb4adc1b6c20c"
@@ -3681,11 +3674,6 @@ remark-stringify@^11.0.0:
     "@types/mdast" "^4.0.0"
     mdast-util-to-markdown "^2.0.0"
     unified "^11.0.0"
-
-request-ip@^3.3.0:
-  version "3.3.0"
-  resolved "https://registry.yarnpkg.com/request-ip/-/request-ip-3.3.0.tgz#863451e8fec03847d44f223e30a5d63e369fa611"
-  integrity sha512-cA6Xh6e0fDBBBwH77SLJaJPBmD3nWVAcF9/XAcsrIHdjhFzFiB5aNQFytdjCGPezU3ROwrR11IddKAM08vohxA==
 
 resolve-from@^4.0.0:
   version "4.0.0"
