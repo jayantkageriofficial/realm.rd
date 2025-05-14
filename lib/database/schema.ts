@@ -79,7 +79,7 @@ const DBPageSchema = new Schema<Page>({
   },
   user: {
     type: Object,
-    required: false,
+    required: true,
   },
   timestamp: {
     type: Date,

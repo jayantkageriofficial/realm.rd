@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Config from "@/lib/constant";
@@ -23,24 +22,30 @@ export interface JwtToken {
   timestamp: Date;
 }
 
-const generateChecksum = (data: JwtPayload) =>
-  crypto
-    .createHash("md5")
-    .update(
-      JSON.stringify({
-        domain: Config.DOMAIN,
-        username: data.username,
-        name: data.name,
-        signed: data.signed,
-        ip: data.ip,
-        buildId: data.buildId,
-        iss: Config.JWT_ISSUER,
-      })
-    )
-    .digest("hex");
+const generateChecksum = async (data: JwtPayload): Promise<string> => {
+  const encoder = new TextEncoder();
+  const message = JSON.stringify({
+    domain: Config.DOMAIN,
+    username: data.username,
+    name: data.name,
+    signed: data.signed,
+    ip: data.ip,
+    buildId: data.buildId,
+    iss: Config.JWT_ISSUER,
+  });
+  const payload = encoder.encode(message);
 
-const verifyChecksum = (data: JwtPayload, checksum: string) =>
-  checksum === generateChecksum(data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", payload);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  return hashHex;
+};
+
+const verifyChecksum = async (data: JwtPayload, checksum: string) =>
+  checksum === (await generateChecksum(data));
 
 async function token({
   user,
@@ -63,7 +68,7 @@ async function token({
     header: {
       alg: Config.JWT_ALGORITHM,
       ...{
-        checksum: generateChecksum(opt),
+        checksum: await generateChecksum(opt),
       },
     },
     issuer: Config.JWT_ISSUER,
@@ -99,7 +104,7 @@ export async function verify(
       payload.iss !== Config.JWT_ISSUER ||
       payload.sub !== Config.DOMAIN ||
       header?.alg !== Config.JWT_ALGORITHM ||
-      !verifyChecksum(payload, header?.checksum)
+      !(await verifyChecksum(payload, header?.checksum))
     )
       return null;
 
@@ -191,7 +196,6 @@ export async function register(
     lastPasswordChange: new Date(),
   }).save();
 
-  console.log(username, password);
   return {
     user: {
       name: newUser.name,

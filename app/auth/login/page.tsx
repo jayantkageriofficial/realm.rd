@@ -1,16 +1,60 @@
+"use client";
+
 import React from "react";
 import Image from "next/image";
+import toast from "react-hot-toast";
+import { Login as login } from "@/lib/actions/auth";
 import logo from "@/assets/logo.svg";
+import { redirect } from "next/navigation";
 
 export default function Login() {
+  const [info, setInfo] = React.useState<{
+    username?: string;
+    password?: string;
+    loading?: boolean;
+  }>({});
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInfo({ ...info, [e.target.id]: e.target.value });
+  };
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setInfo({ ...info, loading: true });
+    if (!info.username || !info.password) {
+      setInfo({ ...info, loading: false });
+      return toast.error("Fill all the fields");
+    }
+    if (info.password.length < 8) {
+      setInfo({ ...info, loading: false });
+      return toast.error("Invalid Credentials");
+    }
+    const res = await login(info.username || "", info.password || "");
+    if (!res) {
+      setInfo({ ...info, loading: false });
+      return toast.error("Invalid Credentials");
+    }
+    const session = JSON.parse(res);
+    if (!session.token) {
+      setInfo({ ...info, loading: false });
+      return toast.error("Invalid Credentials");
+    }
+    toast.success("Logged In");
+    setInfo({ username: "", password: "", loading: false });
+    return redirect("/");
+  };
+
   return (
     <>
       <section
         id="login"
         className="container flex items-center justify-center min-h-screen px-6 mx-auto"
       >
-        <form className="w-full max-w-md">
-          <Image className="w-auto h-8 sm:h-9" src={logo} alt="Logo" />
+        <form className="w-full max-w-md" onSubmit={onSubmit}>
+          <Image
+            className="w-auto h-8 sm:h-9 select-none"
+            src={logo}
+            alt="Logo"
+          />
           {/* 
           <h1 className="mt-3 text-2xl font-semibold text-gray-800 capitalize sm:text-3xl dark:text-white">
             Login
@@ -39,6 +83,10 @@ export default function Login() {
               className="block w-full py-3 border rounded-lg px-11 bg-secondary/60 text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40"
               placeholder="Username"
               autoComplete="off"
+              id="username"
+              onChange={onChange}
+              value={info.username || ""}
+              disabled={info.loading}
             />
           </div>
 
@@ -61,15 +109,25 @@ export default function Login() {
             </span>
 
             <input
+              id="password"
               type="password"
               className="block w-full py-3 border rounded-lg px-11 bg-secondary/60 text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40"
               placeholder="Password"
               autoComplete="off"
+              onChange={onChange}
+              value={info.password || ""}
+              disabled={info.loading}
             />
           </div>
 
           <div className="mt-6">
-            <button className="w-full px-6 py-3 text-sm font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-red-600 rounded-lg hover:bg-red-500 cursor-pointer focus:outline-none focus:ring focus:ring-blue-500">
+            <button
+              className={`w-full px-6 py-3 text-sm font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-red-600 rounded-lg hover:bg-red-500 select-none focus:outline-none focus:ring focus:ring-blue-500 ${
+                info.loading ? "cursor-not-allowed" : "cursor-pointer"
+              }`}
+              type="submit"
+              disabled={info.loading}
+            >
               Sign in
             </button>
           </div>
