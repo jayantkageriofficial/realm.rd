@@ -29,6 +29,9 @@ const nextConfig: NextConfig = {
   images: {
     dangerouslyAllowSVG: true,
   },
+  experimental: {
+    nodeMiddleware: true,
+  },
   async headers() {
     return [
       {

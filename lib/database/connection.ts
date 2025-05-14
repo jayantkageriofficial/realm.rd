@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
 import Config from "@/lib/constant";
+import { info, error, event } from "next/dist/build/output/log";
+
+const start = new Date().getTime();
 
 declare global {
   // eslint-disable-next-line no-var
@@ -25,7 +28,7 @@ async function dbConnect(): Promise<mongoose.Connection> {
     global.mongoose.conn = await global.mongoose.promise;
   } catch (e) {
     global.mongoose.promise = null;
-    console.error("Mongoose connection error:", e);
+    error("Mongoose connection error:", e);
     throw e;
   }
 
@@ -33,14 +36,16 @@ async function dbConnect(): Promise<mongoose.Connection> {
 }
 
 dbConnect()
-  .then(() => console.info("MongoDB connected successfully"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .then(() =>
+    event(`Connected to MongoDB in ${new Date().getTime() - start}ms`)
+  )
+  .catch((err) => error("MongoDB connection error:", err));
 
 ["SIGTERM", "SIGINT"].forEach((signal) => {
   process.on(signal as NodeJS.Signals, async () => {
     if (global.mongoose.conn) {
       await mongoose.disconnect();
-      console.info("MongoDB disconnected on app termination");
+      info("MongoDB disconnected on app termination");
       process.exit(0);
     }
   });

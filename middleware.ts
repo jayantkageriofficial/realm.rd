@@ -8,6 +8,7 @@ export const config = {
   matcher: [
     "/((?!auth/login|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
+  runtime: "nodejs",
 };
 
 async function verify(): Promise<boolean> {
