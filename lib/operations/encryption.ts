@@ -1,9 +1,9 @@
-import crypto from "crypto";
 import fs from "fs";
-import path from "path";
 import os from "os";
-import { exec } from "child_process";
+import path from "path";
+import crypto from "crypto";
 import { promisify } from "util";
+import { exec } from "child_process";
 
 const ALGORITHM = "aes-256-cbc";
 const KEY_SIZE = 32;
