@@ -17,10 +17,7 @@ const PROTECTED_IV_PATH = path.join(APP_DATA_DIR, "protected_iv.bin");
 
 const execAsync = promisify(exec);
 
-export const protectData = async (
-  data: Buffer,
-  outputPath: string
-): Promise<void> => {
+async function protectData(data: Buffer, outputPath: string): Promise<void> {
   if (process.platform !== "win32")
     throw new Error("DPAPI is only available on Windows");
 
@@ -96,9 +93,9 @@ export const protectData = async (
       } catch {}
     }
   }
-};
+}
 
-export const unprotectData = async (inputPath: string): Promise<Buffer> => {
+async function unprotectData(inputPath: string): Promise<Buffer> {
   if (process.platform !== "win32")
     throw new Error("DPAPI is only available on Windows");
   if (!fs.existsSync(inputPath)) await initializeEncryption();
@@ -176,9 +173,9 @@ export const unprotectData = async (inputPath: string): Promise<Buffer> => {
       } catch {}
     }
   }
-};
+}
 
-export const initializeEncryption = async (): Promise<void> => {
+async function initializeEncryption(): Promise<void> {
   if (!fs.existsSync(APP_DATA_DIR))
     fs.mkdirSync(APP_DATA_DIR, { recursive: true });
   if (!fs.existsSync(TEMP_DATA_DIR))
@@ -187,9 +184,9 @@ export const initializeEncryption = async (): Promise<void> => {
     await protectData(crypto.randomBytes(KEY_SIZE), PROTECTED_KEY_PATH);
   if (!fs.existsSync(PROTECTED_IV_PATH))
     await protectData(crypto.randomBytes(IV_SIZE), PROTECTED_IV_PATH);
-};
+}
 
-export const encryptData = async (data: string): Promise<string> => {
+async function encryptData(data: string): Promise<string> {
   await initializeEncryption();
 
   const key = await unprotectData(PROTECTED_KEY_PATH);
@@ -200,9 +197,9 @@ export const encryptData = async (data: string): Promise<string> => {
   encrypted += cipher.final(ENCODING);
 
   return encrypted;
-};
+}
 
-export const decryptData = async (encryptedData: string): Promise<string> => {
+async function decryptData(encryptedData: string): Promise<string> {
   await initializeEncryption();
 
   const key = await unprotectData(PROTECTED_KEY_PATH);
@@ -213,4 +210,6 @@ export const decryptData = async (encryptedData: string): Promise<string> => {
   decrypted += decipher.final("utf8");
 
   return decrypted;
-};
+}
+
+export { encryptData, decryptData };
