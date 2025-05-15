@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
 import Config from "@/lib/constant";
 import { getClientIp } from "@/lib/operations/ip";
@@ -6,7 +6,7 @@ import { verify as verifyToken } from "@/lib/operations/auth";
 
 export const config = {
   matcher: [
-    "/((?!auth/login|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
+    "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
   runtime: "nodejs",
 };
@@ -22,8 +22,11 @@ async function verify(): Promise<boolean> {
   return false;
 }
 
-export async function middleware() {
-  if (!(await verify()))
+export async function middleware(req: NextRequest) {
+  const verification = await verify();
+  const login = req.url == `${Config.DOMAIN}/auth/login`;
+  if (!verification && !login)
     return NextResponse.redirect(`${Config.DOMAIN}/auth/login`);
+  if (verification && login) return NextResponse.redirect(Config.DOMAIN);
   return NextResponse.next();
 }
