@@ -7,12 +7,18 @@ import { Login as login } from "@/lib/actions/auth";
 import logo from "@/assets/logo.svg";
 import { redirect } from "next/navigation";
 
-export default function Login() {
+export default function Login(props: {
+  searchParams: Promise<{
+    path: string | undefined;
+  }>;
+}) {
   const [info, setInfo] = React.useState<{
     username?: string;
     password?: string;
     loading?: boolean;
   }>({});
+
+  const { path } = React.use(props.searchParams);
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInfo({ ...info, [e.target.id]: e.target.value });
@@ -40,7 +46,7 @@ export default function Login() {
     }
     toast.success("Logged In");
     setInfo({ username: "", password: "", loading: false });
-    return redirect("/");
+    return redirect(path || "/");
   };
 
   return (

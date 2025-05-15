@@ -24,9 +24,11 @@ async function verify(): Promise<boolean> {
 
 export async function middleware(req: NextRequest) {
   const verification = await verify();
-  const login = req.url == `${Config.DOMAIN}/auth/login`;
+  const login = req.nextUrl.pathname == "/auth/login";
   if (!verification && !login)
-    return NextResponse.redirect(`${Config.DOMAIN}/auth/login`);
+    return NextResponse.redirect(
+      `${Config.DOMAIN}/auth/login?path=${req.nextUrl.pathname}`
+    );
   if (verification && login) return NextResponse.redirect(Config.DOMAIN);
   return NextResponse.next();
 }

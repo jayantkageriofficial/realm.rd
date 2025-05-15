@@ -1,5 +1,5 @@
-import { PageSchema, type User } from "@/lib/database/schema";
-import { encryptData } from "@/lib/operations/encryption";
+import { PageSchema, type User, type Page } from "@/lib/database/schema";
+import { encryptData, decryptData } from "@/lib/operations/encryption";
 
 export async function create(
   id: string,
@@ -19,4 +19,22 @@ export async function create(
   });
   console.log(page);
   return page;
+}
+
+export async function get(id: string, user: User): Promise<Page | null> {
+  const page: Page | null = await PageSchema.findOne({
+    id,
+  });
+  if (!page) return null;
+  if (page.user?.username !== user.username) return null;
+  const title = await decryptData(page.title);
+  const content = await decryptData(page.content);
+  return {
+    id: page.id,
+    title,
+    content,
+    date: page.date,
+    timestamp: page.timestamp,
+    user: page.user,
+  } as Page;
 }
