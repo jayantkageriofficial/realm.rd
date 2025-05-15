@@ -1,4 +1,5 @@
 import { PageSchema, type User } from "@/lib/database/schema";
+import { encryptData } from "@/lib/operations/encryption";
 
 export async function create(
   id: string,
@@ -7,10 +8,12 @@ export async function create(
   date: Date,
   user: User
 ) {
+  const name = await encryptData(title);
+  const encrypted = await encryptData(content);
   const page = await PageSchema.create({
     id,
-    title,
-    content,
+    title: name,
+    content: encrypted,
     date,
     user,
   });
