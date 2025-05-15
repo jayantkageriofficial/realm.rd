@@ -18,6 +18,11 @@ export default class Config {
     process.env.SESSION_DURATION || "2"
   );
 
+  public static readonly CIPHER_ALGORITHM: string = "aes-256-cbc";
+  public static readonly CIPHER_KEY_SIZE: number = 32;
+  public static readonly CIPHER_IV_SIZE: number = 16;
+  public static readonly CIPHER_ENCODING: BufferEncoding = "hex";
+
   public static readonly MONGODB_URI: string =
     process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/";
 }

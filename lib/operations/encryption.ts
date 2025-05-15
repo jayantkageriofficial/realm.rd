@@ -4,16 +4,12 @@ import path from "path";
 import crypto from "crypto";
 import { promisify } from "util";
 import { exec } from "child_process";
-
-const ALGORITHM = "aes-256-cbc";
-const KEY_SIZE = 32;
-const IV_SIZE = 16;
-const ENCODING: BufferEncoding = "hex";
+import Config from "@/lib/constant";
 
 const APP_DATA_DIR = path.join(os.homedir(), "AppData", "Local", "revamp");
 const TEMP_DATA_DIR = path.join(os.tmpdir(), "revamp");
-const PROTECTED_KEY_PATH = path.join(APP_DATA_DIR, "protected_key.bin");
-const PROTECTED_IV_PATH = path.join(APP_DATA_DIR, "protected_iv.bin");
+const KEY_PATH = path.join(APP_DATA_DIR, "cipher_key.bin");
+const IV_PATH = path.join(APP_DATA_DIR, "cipher_iv.bin");
 
 const execAsync = promisify(exec);
 
@@ -173,21 +169,21 @@ async function initializeEncryption(): Promise<void> {
     fs.mkdirSync(APP_DATA_DIR, { recursive: true });
   if (!fs.existsSync(TEMP_DATA_DIR))
     fs.mkdirSync(TEMP_DATA_DIR, { recursive: true });
-  if (!fs.existsSync(PROTECTED_KEY_PATH))
-    await protectData(crypto.randomBytes(KEY_SIZE), PROTECTED_KEY_PATH);
-  if (!fs.existsSync(PROTECTED_IV_PATH))
-    await protectData(crypto.randomBytes(IV_SIZE), PROTECTED_IV_PATH);
+  if (!fs.existsSync(KEY_PATH))
+    await protectData(crypto.randomBytes(Config.CIPHER_KEY_SIZE), KEY_PATH);
+  if (!fs.existsSync(IV_PATH))
+    await protectData(crypto.randomBytes(Config.CIPHER_IV_SIZE), IV_PATH);
 }
 
 async function encryptData(data: string): Promise<string> {
   await initializeEncryption();
 
-  const key = await unprotectData(PROTECTED_KEY_PATH);
-  const iv = await unprotectData(PROTECTED_IV_PATH);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
+  const key = await unprotectData(KEY_PATH);
+  const iv = await unprotectData(IV_PATH);
+  const cipher = crypto.createCipheriv(Config.CIPHER_ALGORITHM, key, iv);
 
-  let encrypted = cipher.update(data, "utf8", ENCODING);
-  encrypted += cipher.final(ENCODING);
+  let encrypted = cipher.update(data, "utf8", Config.CIPHER_ENCODING);
+  encrypted += cipher.final(Config.CIPHER_ENCODING);
 
   return encrypted;
 }
@@ -195,11 +191,15 @@ async function encryptData(data: string): Promise<string> {
 async function decryptData(encryptedData: string): Promise<string> {
   await initializeEncryption();
 
-  const key = await unprotectData(PROTECTED_KEY_PATH);
-  const iv = await unprotectData(PROTECTED_IV_PATH);
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+  const key = await unprotectData(KEY_PATH);
+  const iv = await unprotectData(IV_PATH);
+  const decipher = crypto.createDecipheriv(Config.CIPHER_ALGORITHM, key, iv);
 
-  let decrypted = decipher.update(encryptedData, ENCODING, "utf8");
+  let decrypted = decipher.update(
+    encryptedData,
+    Config.CIPHER_ENCODING,
+    "utf8"
+  );
   decrypted += decipher.final("utf8");
 
   return decrypted;

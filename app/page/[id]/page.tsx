@@ -23,7 +23,7 @@ export default async function Page({ params }: { params: { id: string } }) {
             <span className="text-red-600">.RD</span>
           </h1>
         </div>
-        <div className="flex justify-between mx-4 mt-2">
+        <div className="flex justify-between mx-4 mt-2 mb-4">
           <span className="text-gray-100 italic">{date.toLocaleString()}</span>
           <span className="text-gray-100 italic">- {page.user.name}</span>
         </div>
