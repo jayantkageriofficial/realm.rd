@@ -4,7 +4,8 @@ import React from "react";
 import { getPage } from "@/lib/actions/pages";
 import Markdown from "@/components/Markdown";
 
-export default async function Page({ params }: { params: { id: string } }) {
+export default async function Page(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const res = await getPage(params.id);
   if (!res)
     return (
