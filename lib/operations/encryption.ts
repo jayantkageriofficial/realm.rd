@@ -44,7 +44,6 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
           [System.Security.Cryptography.DataProtectionScope]::CurrentUser
         );
         
-        # Ensure directory exists before writing the file
         $directory = [System.IO.Path]::GetDirectoryName("${outputPath.replace(
           /\\/g,
           "\\\\"
@@ -116,7 +115,6 @@ async function unprotectData(inputPath: string): Promise<Buffer> {
         [System.Security.Cryptography.DataProtectionScope]::CurrentUser
       );
       
-      # Ensure directory exists before writing the file
       $directory = [System.IO.Path]::GetDirectoryName("${tempOutputPath.replace(
         /\\/g,
         "\\\\"
