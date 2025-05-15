@@ -21,9 +21,6 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
   if (process.platform !== "win32")
     throw new Error("DPAPI is only available on Windows");
 
-  if (!fs.existsSync(TEMP_DATA_DIR))
-    fs.mkdirSync(TEMP_DATA_DIR, { recursive: true });
-
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
@@ -66,6 +63,7 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
         exit 1;
       }
     `;
+
     const scriptPath = path.join(
       os.tmpdir(),
       `dpapi_protect_${Date.now()}.ps1`
@@ -98,9 +96,6 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
 async function unprotectData(inputPath: string): Promise<Buffer> {
   if (process.platform !== "win32")
     throw new Error("DPAPI is only available on Windows");
-  if (!fs.existsSync(inputPath)) await initializeEncryption();
-  if (!fs.existsSync(TEMP_DATA_DIR))
-    fs.mkdirSync(TEMP_DATA_DIR, { recursive: true });
 
   const tempOutputPath = path.join(
     TEMP_DATA_DIR,
