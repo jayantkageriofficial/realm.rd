@@ -1,4 +1,5 @@
 import { Schema, model, models } from "mongoose";
+import Config from "@/lib/constant";
 
 // Interfaces
 interface User {
@@ -6,6 +7,12 @@ interface User {
   username: string;
   password?: string;
   lastPasswordChange?: Date;
+  timestamp?: Date;
+}
+
+interface Token {
+  username: string;
+  token: string;
   timestamp?: Date;
 }
 
@@ -56,6 +63,23 @@ const DBUserSchema = new Schema<User>({
   timestamp: {
     type: Date,
     default: Date.now,
+  },
+});
+
+const DBTokenSchema = new Schema<Token>({
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  token: {
+    type: String,
+    required: true,
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+    expires: Config.SESSION_DURATION * 60,
   },
 });
 
@@ -141,10 +165,11 @@ const DBNotesSchema = new Schema<Notes>({
 
 // Models
 const UserSchema = models.Users || model("Users", DBUserSchema);
+const TokenSchema = models.Tokens || model("Tokens", DBTokenSchema);
 const PageSchema = models.Page || model("Page", DBPageSchema);
 const TodoSchema = models.Todo || model("Todo", DBTodoSchema);
 const NotesSchema = models.Notes || model("Notes", DBNotesSchema);
 
-export { UserSchema, PageSchema, TodoSchema, NotesSchema };
+export { UserSchema, TokenSchema, PageSchema, TodoSchema, NotesSchema };
 
 export type { User, Page, Todo, Notes };

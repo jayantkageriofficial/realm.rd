@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Config from "@/lib/constant";
-import { type User, UserSchema } from "@/lib/database/schema";
+import { type User, UserSchema, TokenSchema } from "@/lib/database/schema";
 
 export interface JwtPayload {
   username: string;
@@ -62,9 +62,9 @@ async function token({
     buildId: process.env.BUILD_ID,
   };
 
-  return jwt.sign(opt, Config.JWT_SECRET, {
+  const gen = jwt.sign(opt, Config.JWT_SECRET, {
     algorithm: Config.JWT_ALGORITHM,
-    expiresIn: Config.SESSION_DURATION * 86400,
+    expiresIn: Config.SESSION_DURATION * 60,
     header: {
       alg: Config.JWT_ALGORITHM,
       ...{
@@ -74,6 +74,14 @@ async function token({
     issuer: Config.JWT_ISSUER,
     subject: Config.DOMAIN,
   });
+
+  await TokenSchema.findOneAndDelete({ username: user.username });
+  const db = await new TokenSchema({
+    username: user.username,
+    token: gen,
+  }).save();
+
+  return db.token;
 }
 
 export async function verify(
@@ -111,7 +119,7 @@ export async function verify(
     const signed = new Date(payload.signed); // get signed date
     if (
       new Date().valueOf() - signed.valueOf() >
-      86400000 * Config.SESSION_DURATION
+      60000 * Config.SESSION_DURATION
     )
       return null;
 
@@ -119,6 +127,14 @@ export async function verify(
       username: payload.username,
     });
     if (!user) return null;
+
+    if (
+      !(await TokenSchema.findOne({
+        token,
+        username: payload.username,
+      }))
+    )
+      return null;
 
     if (new Date(user.lastPasswordChange).valueOf() > signed.valueOf())
       return null;
@@ -164,6 +180,16 @@ export async function login(
       timestamp: user.timestamp,
     },
   };
+}
+
+export async function logout(
+  token: string,
+  ip: string
+): Promise<boolean | null> {
+  const verification = await verify(token, ip);
+  if (!verification) return null;
+  await TokenSchema.findOneAndDelete({ token });
+  return true;
 }
 
 export async function register(

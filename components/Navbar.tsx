@@ -105,13 +105,13 @@ export default function Navbar() {
                 </Link>
               ))}
             </div>
-            {/* 
+
             <div className="flex justify-center md:block">
               <Link
                 className="relative transition-colors duration-300 transform text-gray-200 "
-                href="/new"
+                href="/auth/logout"
               >
-                <button className="bg-quaternary rounded-lg hover:bg-[#0087ca] cursor-pointer duration-300 transition-colors border border-transparent px-8 py-2.5">
+                <div className="bg-quaternary rounded-full hover:bg-red-600 cursor-pointer duration-300 transition-colors border border-transparent p-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
@@ -123,12 +123,12 @@ export default function Navbar() {
                     <path
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z"
+                      d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15"
                     />
                   </svg>
-                </button>
+                </div>
               </Link>
-            </div> */}
+            </div>
           </div>
         </div>
       </nav>
