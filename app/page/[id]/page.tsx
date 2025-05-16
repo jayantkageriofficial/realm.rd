@@ -1,18 +1,14 @@
 "use server";
 
 import React from "react";
-import { getPage } from "@/lib/actions/pages";
+import NotFound from "@/app/not-found";
 import Markdown from "@/components/Markdown";
+import { getPage } from "@/lib/actions/pages";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const res = await getPage(params.id);
-  if (!res)
-    return (
-      <div className="text-white text-2xl m-5 flex justify-center min-h-screen">
-        Not Found
-      </div>
-    );
+  if (!res) return <NotFound />;
   const page = JSON.parse(res);
   const date = new Date(page.timestamp);
   return (

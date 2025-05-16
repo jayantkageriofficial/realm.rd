@@ -20,19 +20,41 @@ const execAsync = promisify(exec);
 
 async function checkExecutionPolicy(): Promise<void> {
   try {
-    const { stdout } = (await execAsync(
-      'powershell -Command "Get-ExecutionPolicy"'
-    )) as PowerShellResult;
-    const policy = stdout.trim().toLowerCase();
-    if (policy === "restricted") {
+    const testScript = path.join(
+      os.tmpdir(),
+      `test_execution_${Date.now()}.ps1`
+    );
+    fs.writeFileSync(testScript, 'Write-Output "ExecutionPolicyTest"', {
+      mode: 0o600,
+    });
+
+    try {
+      await execAsync(
+        `powershell -ExecutionPolicy Bypass -File "${testScript}"`,
+        { windowsHide: true }
+      );
+      // If we get here, scripts can be executed with Bypass flag, which is all we need
+    } catch (error) {
       console.warn(
-        "Warning: PowerShell ExecutionPolicy is set to 'Restricted'. " +
-          "This may prevent the encryption operations from working. " +
-          "Consider running: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
+        "Warning: Unable to execute PowerShell scripts even with ExecutionPolicy Bypass. " +
+          "Encryption operations may fail. Please check your PowerShell configuration.",
+        error
       );
     }
-  } catch (error) {
-    console.warn("Could not check PowerShell ExecutionPolicy:", error);
+  } catch {
+    console.warn(
+      "Could not verify PowerShell script execution capability. Encryption operations will still attempt to run."
+    );
+  } finally {
+    const testScript = path.join(
+      os.tmpdir(),
+      `test_execution_${Date.now()}.ps1`
+    );
+    if (fs.existsSync(testScript)) {
+      try {
+        fs.unlinkSync(testScript);
+      } catch {}
+    }
   }
 }
 

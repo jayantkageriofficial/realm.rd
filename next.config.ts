@@ -22,7 +22,7 @@ const nextConfig: NextConfig = {
     removeConsole: DEVELOPMENT
       ? false
       : {
-          exclude: ["info"],
+          exclude: ["info", "warn"],
         },
     reactRemoveProperties: true,
   },

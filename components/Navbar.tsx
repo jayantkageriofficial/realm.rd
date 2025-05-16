@@ -21,7 +21,7 @@ export default function Navbar() {
       title: "Notes",
     },
     {
-      path: "pages",
+      path: "page",
       title: "Pages",
     },
   ];
@@ -90,6 +90,7 @@ export default function Navbar() {
                 ? "translate-x-0 opacity-100"
                 : "opacity-0 -translate-x-full"
             }`}
+            hidden={`/auth/login` == path}
           >
             <div className="flex flex-col md:flex-row md:mx-4">
               {pages.map((page) => (
@@ -109,7 +110,7 @@ export default function Navbar() {
             <div className="flex justify-center md:block">
               <Link
                 className="relative transition-colors duration-300 transform text-gray-200 "
-                href="/auth/logout"
+                href={`/auth/logout?path=${path}`}
               >
                 <div className="bg-quaternary rounded-full hover:bg-red-600 cursor-pointer duration-300 transition-colors border border-transparent p-2">
                   <svg

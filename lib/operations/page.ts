@@ -17,7 +17,6 @@ export async function create(
     date,
     user,
   });
-  console.log(page);
   return page;
 }
 
