@@ -38,3 +38,19 @@ export async function get(id: string, user: User): Promise<Page | null> {
     user: page.user,
   } as Page;
 }
+
+export async function getAll(
+  user: User,
+  page?: number
+): Promise<Page[] | null> {
+  const res = await PageSchema.find({
+    "user.username": user.username,
+  })
+    .sort({ date: -1 })
+    .limit((page || 1) * 20);
+  const results = await Promise.all(res.map((page) => get(page.id, user)));
+  const pages: Page[] | null = results.filter(
+    (page): page is Page => page !== null
+  );
+  return pages;
+}
