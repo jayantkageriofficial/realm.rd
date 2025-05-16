@@ -6,6 +6,11 @@ import { promisify } from "util";
 import { exec } from "child_process";
 import Config from "@/lib/constant";
 
+interface PowerShellResult {
+  stdout: string;
+  stderr: string;
+}
+
 const APP_DATA_DIR = path.join(os.homedir(), "AppData", "Local", "revamp");
 const TEMP_DATA_DIR = path.join(os.tmpdir(), "revamp");
 const KEY_PATH = path.join(APP_DATA_DIR, "cipher_key.bin");
@@ -13,9 +18,29 @@ const IV_PATH = path.join(APP_DATA_DIR, "cipher_iv.bin");
 
 const execAsync = promisify(exec);
 
+async function checkExecutionPolicy(): Promise<void> {
+  try {
+    const { stdout } = (await execAsync(
+      'powershell -Command "Get-ExecutionPolicy"'
+    )) as PowerShellResult;
+    const policy = stdout.trim().toLowerCase();
+    if (policy === "restricted") {
+      console.warn(
+        "Warning: PowerShell ExecutionPolicy is set to 'Restricted'. " +
+          "This may prevent the encryption operations from working. " +
+          "Consider running: Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser"
+      );
+    }
+  } catch (error) {
+    console.warn("Could not check PowerShell ExecutionPolicy:", error);
+  }
+}
+
 async function protectData(data: Buffer, outputPath: string): Promise<void> {
   if (process.platform !== "win32")
     throw new Error("DPAPI is only available on Windows");
+
+  await checkExecutionPolicy();
 
   const outputDir = path.dirname(outputPath);
   if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
@@ -24,19 +49,22 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
     TEMP_DATA_DIR,
     `temp_input_${Date.now()}.bin`
   );
-  fs.writeFileSync(tempInputPath, data);
+  fs.writeFileSync(tempInputPath, data, { mode: 0o600 });
+
+  const scriptPath = path.join(os.tmpdir(), `dpapi_protect_${Date.now()}.ps1`);
 
   try {
     const psScript = `
       Add-Type -AssemblyName System.Security;
+      $ErrorActionPreference = 'Stop';
       try {
         $bytes = [System.IO.File]::ReadAllBytes("${tempInputPath.replace(
           /\\/g,
           "\\\\"
         )}");
         $encrypted = [System.Security.Cryptography.ProtectedData]::Protect(
-          $bytes, 
-          $null, 
+          $bytes,
+          $null,
           [System.Security.Cryptography.DataProtectionScope]::CurrentUser
         );
         
@@ -47,32 +75,32 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
         if (-not [System.IO.Directory]::Exists($directory)) {
           [System.IO.Directory]::CreateDirectory($directory);
         }
-        
+
         [System.IO.File]::WriteAllBytes("${outputPath.replace(
           /\\/g,
           "\\\\"
         )}", $encrypted);
         Write-Output "Success";
       } catch {
-        Write-Error $_.Exception.Message;
+        $errorMessage = "DPAPI Protection Error: " + $_.Exception.Message;
+        if ($_.Exception.InnerException) {
+          $errorMessage += "\`nInner Exception: " + $_.Exception.InnerException.Message;
+        }
+        Write-Error $errorMessage;
         exit 1;
       }
     `;
 
-    const scriptPath = path.join(
-      os.tmpdir(),
-      `dpapi_protect_${Date.now()}.ps1`
-    );
-    fs.writeFileSync(scriptPath, psScript);
+    fs.writeFileSync(scriptPath, psScript, { mode: 0o600 });
 
-    const res = await execAsync(
+    const res = (await execAsync(
       `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`,
       { windowsHide: true }
-    );
+    )) as PowerShellResult;
 
     if (res.stderr) {
       console.error("PowerShell DPAPI protection error:", res.stderr);
-      throw new Error(`DPAPI protection failed: ${res.stderr}`);
+      throw new Error(`DPAPI protection failed: ${res.stderr.trim()}`);
     }
     if (!fs.existsSync(outputPath)) {
       throw new Error(
@@ -80,11 +108,15 @@ async function protectData(data: Buffer, outputPath: string): Promise<void> {
       );
     }
   } finally {
-    if (fs.existsSync(tempInputPath)) {
-      try {
-        fs.unlinkSync(tempInputPath);
-      } catch {}
-    }
+    [tempInputPath, scriptPath].forEach((file) => {
+      if (fs.existsSync(file)) {
+        try {
+          fs.unlinkSync(file);
+        } catch (error) {
+          console.warn(`Failed to cleanup temp file ${file}:`, error);
+        }
+      }
+    });
   }
 }
 
@@ -92,57 +124,75 @@ async function unprotectData(inputPath: string): Promise<Buffer> {
   if (process.platform !== "win32")
     throw new Error("DPAPI is only available on Windows");
 
+  await checkExecutionPolicy();
+
   const tempOutputPath = path.join(
     TEMP_DATA_DIR,
     `temp_output_${Date.now()}.bin`
   );
+  const scriptPath = path.join(
+    os.tmpdir(),
+    `dpapi_unprotect_${Date.now()}.ps1`
+  );
 
   try {
     const psScript = `
-    Add-Type -AssemblyName System.Security;
-    try {
-      $encrypted = [System.IO.File]::ReadAllBytes("${inputPath.replace(
-        /\\/g,
-        "\\\\"
-      )}");
-      $decrypted = [System.Security.Cryptography.ProtectedData]::Unprotect(
-        $encrypted, 
-        $null, 
-        [System.Security.Cryptography.DataProtectionScope]::CurrentUser
-      );
-      
-      $directory = [System.IO.Path]::GetDirectoryName("${tempOutputPath.replace(
-        /\\/g,
-        "\\\\"
-      )}");
-      if (-not [System.IO.Directory]::Exists($directory)) {
-        [System.IO.Directory]::CreateDirectory($directory);
+      Add-Type -AssemblyName System.Security;
+      $ErrorActionPreference = 'Stop';
+      try {
+        if (-not [System.IO.File]::Exists("${inputPath.replace(
+          /\\/g,
+          "\\\\"
+        )}")) {
+          throw [System.IO.FileNotFoundException]::new("Input file not found: ${inputPath.replace(
+            /\\/g,
+            "\\\\"
+          )}");
+        }
+        
+        $encrypted = [System.IO.File]::ReadAllBytes("${inputPath.replace(
+          /\\/g,
+          "\\\\"
+        )}");
+        $decrypted = [System.Security.Cryptography.ProtectedData]::Unprotect(
+          $encrypted, 
+          $null, 
+          [System.Security.Cryptography.DataProtectionScope]::CurrentUser
+        );
+        
+        $directory = [System.IO.Path]::GetDirectoryName("${tempOutputPath.replace(
+          /\\/g,
+          "\\\\"
+        )}");
+        if (-not [System.IO.Directory]::Exists($directory)) {
+          [System.IO.Directory]::CreateDirectory($directory);
+        }
+        
+        [System.IO.File]::WriteAllBytes("${tempOutputPath.replace(
+          /\\/g,
+          "\\\\"
+        )}", $decrypted);
+        Write-Output "Success";
+      } catch {
+        $errorMessage = "DPAPI Unprotection Error: " + $_.Exception.Message;
+        if ($_.Exception.InnerException) {
+          $errorMessage += "\`nInner Exception: " + $_.Exception.InnerException.Message;
+        }
+        Write-Error $errorMessage;
+        exit 1;
       }
-      
-      [System.IO.File]::WriteAllBytes("${tempOutputPath.replace(
-        /\\/g,
-        "\\\\"
-      )}", $decrypted);
-      Write-Output "Success";
-    } catch {
-      Write-Error $_.Exception.Message;
-      exit 1;
-    }
-  `;
-    const scriptPath = path.join(
-      os.tmpdir(),
-      `dpapi_unprotect_${Date.now()}.ps1`
-    );
-    fs.writeFileSync(scriptPath, psScript);
+    `;
 
-    const res = await execAsync(
+    fs.writeFileSync(scriptPath, psScript, { mode: 0o600 });
+
+    const res = (await execAsync(
       `powershell -ExecutionPolicy Bypass -File "${scriptPath}"`,
       { windowsHide: true }
-    );
+    )) as PowerShellResult;
 
     if (res.stderr) {
       console.error("PowerShell DPAPI unprotection error:", res.stderr);
-      throw new Error(`DPAPI unprotection failed: ${res.stderr}`);
+      throw new Error(`DPAPI unprotection failed: ${res.stderr.trim()}`);
     }
 
     if (!fs.existsSync(tempOutputPath)) {
@@ -156,11 +206,15 @@ async function unprotectData(inputPath: string): Promise<Buffer> {
     console.error("Error during DPAPI unprotection:", error);
     throw error;
   } finally {
-    if (fs.existsSync(tempOutputPath)) {
-      try {
-        fs.unlinkSync(tempOutputPath);
-      } catch {}
-    }
+    [tempOutputPath, scriptPath].forEach((file) => {
+      if (fs.existsSync(file)) {
+        try {
+          fs.unlinkSync(file);
+        } catch (error) {
+          console.warn(`Failed to cleanup temp file ${file}:`, error);
+        }
+      }
+    });
   }
 }
 
