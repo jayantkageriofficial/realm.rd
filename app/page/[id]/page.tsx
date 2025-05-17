@@ -10,7 +10,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
   const res = await getPage(params.id);
   if (!res) return <NotFound />;
   const page = JSON.parse(res);
-  const date = new Date(page.timestamp);
+
   return (
     <>
       <section id="home" className="min-h-screen mt-10 m-4">
@@ -21,8 +21,16 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           </h1>
         </div>
         <div className="flex justify-between mx-4 mt-2 mb-4">
-          <span className="text-gray-100 italic">{date.toLocaleString()}</span>
-          <span className="text-gray-100 italic">- {page.user.name}</span>
+          <span className="text-gray-100 italic">
+            {new Date(page.date).toLocaleDateString()}
+          </span>
+          <span className="text-gray-100 italic">
+            - {page.user.name}
+            <br />
+            <span className="text-gray-600">
+              {new Date(page.timestamp).toLocaleString()}
+            </span>
+          </span>
         </div>
         <div>
           <Markdown content={page.content} />

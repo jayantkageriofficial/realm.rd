@@ -30,7 +30,7 @@ export default async function Page() {
             <Link href={`/page/${page.id}`}>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-light text-gray-600 dark:text-gray-400">
-                  {page.timestamp?.toLocaleDateString()}
+                  {page.date?.toLocaleDateString()}
                 </span>
               </div>
 

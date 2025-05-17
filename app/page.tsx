@@ -7,41 +7,66 @@ import { createPage } from "@/lib/actions/pages";
 
 export default function Home() {
   const date = new Date();
+  const today = new Date().toISOString().split("T")[0];
   const init = `# ${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
     "0"
   )}-${String(date.getDate()).padStart(2, "0")}`;
 
   const [info, setInfo] = React.useState<{
+    title: string;
     value: string;
     loading: boolean;
+    date: string;
   }>({
-    value: init,
+    title: init,
+    value: "",
+    date: today,
     loading: false,
   });
 
   const normalizeInput = (str: string) =>
     str.trim().replace(/\s+/g, " ").replace(/ +/g, " ");
 
+  const toDate = (str: string): Date => {
+    return new Date(str);
+  };
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInfo({ ...info, [e.target.id]: e.target.value });
+  };
+
   const onSubmit = React.useCallback(
-    (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
+    async (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       setInfo({ ...info, loading: true });
       if (
-        normalizeInput(info.value) == init ||
-        normalizeInput(info.value) == ""
+        normalizeInput(info.value) == "" ||
+        !info.title ||
+        normalizeInput(info.title) == "" ||
+        info.date == "" ||
+        !(toDate(today) > toDate(info.date))
       ) {
         setInfo({ ...info, loading: false });
-        return toast.error("No content provided");
+        return toast.error("Invalid Details");
       }
-      createPage(info.value);
-      toast.success("Created a Page");
-      setInfo({
-        value: init,
-        loading: false,
-      });
+
+      const res = await createPage(info.title, info.value, new Date(info.date));
+      if (res) {
+        toast.success("Created a Page");
+        setInfo({
+          title: init,
+          value: "",
+          loading: false,
+          date: today,
+        });
+      } else {
+        toast.error("Internal Error");
+        setInfo({ ...info, loading: false });
+      }
     },
-    [info, init]
+
+    [info, today, init]
   );
 
   React.useEffect(() => {
@@ -73,6 +98,16 @@ export default function Home() {
             </div>
           </div>
           <div className="md:w-1/2">
+            <input
+              id="title"
+              type="text"
+              className="block mb-3 w-full py-3 border rounded-lg px-5 bg-[#0D1117] text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40"
+              placeholder="Title"
+              autoComplete="off"
+              value={info.title}
+              onChange={onChange}
+            />
+
             <MDEditor
               value={info.value}
               className="prose max-w-full min-h-fit"
@@ -101,12 +136,35 @@ export default function Home() {
                 commands.unorderedListCommand,
                 commands.orderedListCommand,
                 commands.checkedListCommand,
-              ]}
+              ].map((cmd) => ({
+                ...cmd,
+                buttonProps: {
+                  ...cmd.buttonProps,
+                  tabIndex: -1,
+                },
+              }))}
               extraCommands={[
                 commands.codeEdit,
                 commands.codeLive,
                 commands.codePreview,
-              ]}
+              ].map((cmd) => ({
+                ...cmd,
+                buttonProps: {
+                  ...cmd.buttonProps,
+                  tabIndex: -1,
+                },
+              }))}
+            />
+
+            <input
+              id="date"
+              type="date"
+              className="block mt-3 w-full py-3 border rounded-lg px-5 bg-[#0D1117] text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40 "
+              placeholder="Date"
+              autoComplete="off"
+              max={new Date().toISOString().split("T")[0]}
+              value={info.date}
+              onChange={onChange}
             />
 
             <button

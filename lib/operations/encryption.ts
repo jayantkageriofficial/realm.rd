@@ -33,7 +33,6 @@ async function checkExecutionPolicy(): Promise<void> {
         `powershell -ExecutionPolicy Bypass -File "${testScript}"`,
         { windowsHide: true }
       );
-      // If we get here, scripts can be executed with Bypass flag, which is all we need
     } catch (error) {
       console.warn(
         "Warning: Unable to execute PowerShell scripts even with ExecutionPolicy Bypass. " +
