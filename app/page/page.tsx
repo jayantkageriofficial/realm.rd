@@ -20,7 +20,7 @@ export default async function Page() {
           </h1>
         </div>
 
-        <hr className="mt-3 mb-8 border-gray-200 dark:border-gray-700" />
+        <hr className="mt-3 mb-8 border-gray-700" />
 
         {pages?.map((page) => (
           <div
@@ -29,7 +29,7 @@ export default async function Page() {
           >
             <Link href={`/page/${page.id}`}>
               <div className="flex items-center justify-between">
-                <span className="text-sm font-light text-gray-600 dark:text-gray-400">
+                <span className="text-sm font-light text-gray-400">
                   {page.date?.toLocaleDateString()}
                 </span>
               </div>
@@ -41,7 +41,7 @@ export default async function Page() {
                 >
                   {page.title}
                 </span>
-                <p className="mt-2 text-gray-600 dark:text-gray-300">
+                <p className="mt-2 text-gray-300">
                   {page.content?.length > 140
                     ? page.content?.slice(0, 140) + "..."
                     : page.content}

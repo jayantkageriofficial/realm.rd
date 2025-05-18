@@ -6,7 +6,7 @@ import MDEditor from "@uiw/react-md-editor";
 export default function Markdown(props: { content: string }) {
   return (
     <>
-      <div className="prose dark:prose-invert max-w-none">
+      <div className="prose prose-invert max-w-none">
         <MDEditor.Markdown
           source={props.content}
           className="!bg-transparent !p-0 wmde-markdown "
