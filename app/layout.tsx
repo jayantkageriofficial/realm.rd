@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import Shortcut from "@/components/Shortcut";
 import { Toaster } from "react-hot-toast";
 import logo from "@/assets/logo.svg";
 
@@ -49,6 +50,7 @@ export default function RootLayout({
         <Navbar />
         {children}
         <Footer />
+        <Shortcut />
       </body>
     </html>
   );
