@@ -24,8 +24,7 @@ export async function get(id: string, user: User): Promise<Page | null> {
   const page: Page | null = await PageSchema.findOne({
     id,
   });
-  if (!page) return null;
-  if (page.user?.username !== user.username) return null;
+  if (!page || page.user?.username !== user.username) return null;
   const title = await decryptData(page.title);
   const content = await decryptData(page.content);
   return {
@@ -64,8 +63,7 @@ export async function edit(
   const page = await PageSchema.findOne({
     id,
   });
-  if (!page) return null;
-  if (page.user?.username !== user.username) return null;
+  if (!page || page.user?.username !== user.username) return null;
 
   const name = await encryptData(title);
   const encrypted = await encryptData(content);
@@ -74,5 +72,14 @@ export async function edit(
     content: encrypted,
     date,
   });
+  return res;
+}
+
+export async function dlt(id: string, user: User) {
+  const page = await PageSchema.findOne({
+    id,
+  });
+  if (!page || page.user?.username !== user.username) return null;
+  const res = await PageSchema.findByIdAndDelete(page._id);
   return res;
 }
