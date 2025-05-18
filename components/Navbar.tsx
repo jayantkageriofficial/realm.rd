@@ -108,7 +108,7 @@ export default function Navbar() {
             </div>
 
             <div className="flex justify-center md:block">
-              <Link
+              <a
                 className="relative transition-colors duration-300 transform text-gray-200 "
                 href={`/auth/logout?path=${path}`}
               >
@@ -128,7 +128,7 @@ export default function Navbar() {
                     />
                   </svg>
                 </div>
-              </Link>
+              </a>
             </div>
           </div>
         </div>

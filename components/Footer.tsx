@@ -9,7 +9,7 @@ export default function Footer() {
     <>
       <footer className="bg-secondary rounded-full mx-2 mb-2 py-4 select-none">
         <div className="flex items-center flex-row justify-start">
-          <Link href={"/"} className="mx-5">
+          <Link href={"/"} className="ml-5">
             <Image
               className="h-4 md:h-5 w-auto scale-150 md:scale-125"
               src={logo}
