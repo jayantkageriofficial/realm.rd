@@ -44,7 +44,7 @@ export async function getAll(
   const res = await PageSchema.find({
     "user.username": user.username,
   })
-    .sort({ date: -1 })
+    .sort({ date: -1, timestamp: -1 })
     .limit((page || 1) * 20);
   const results = await Promise.all(res.map((page) => get(page.id, user)));
   const pages: Page[] | null = results.filter(
