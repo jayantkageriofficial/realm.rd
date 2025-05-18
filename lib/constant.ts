@@ -15,7 +15,7 @@ export default class Config {
   public static readonly JWT_ISSUER: string = "https://jayantkageri.in";
 
   public static readonly SESSION_DURATION: number = parseInt(
-    process.env.SESSION_DURATION || "2"
+    process.env.SESSION_DURATION || "15"
   );
 
   public static readonly CIPHER_ALGORITHM: string = "aes-256-cbc";
