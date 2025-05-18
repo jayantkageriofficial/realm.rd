@@ -60,9 +60,6 @@ const nextConfig: NextConfig = {
 
   generateBuildId: async () => {
     if (DEVELOPMENT) return "development";
-
-    console.log();
-    console.log();
     console.log("🚀", "REVAMP.RD, Scribble the plans, spill the thoughts.");
     console.log(
       "➔",
@@ -79,7 +76,6 @@ const nextConfig: NextConfig = {
     console.log();
 
     console.log("🔥", "Build ID:", BUILD_ID);
-    console.log();
     console.log();
 
     return BUILD_ID;
