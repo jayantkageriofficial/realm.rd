@@ -53,3 +53,26 @@ export async function getAll(
   );
   return pages;
 }
+
+export async function edit(
+  id: string,
+  title: string,
+  content: string,
+  date: Date,
+  user: User
+) {
+  const page = await PageSchema.findOne({
+    id,
+  });
+  if (!page) return null;
+  if (page.user?.username !== user.username) return null;
+
+  const name = await encryptData(title);
+  const encrypted = await encryptData(content);
+  const res = await PageSchema.findByIdAndUpdate(page._id, {
+    title: name,
+    content: encrypted,
+    date,
+  });
+  return res;
+}

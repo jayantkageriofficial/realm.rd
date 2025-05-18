@@ -4,6 +4,7 @@ import React from "react";
 import MDEditor, { commands } from "@uiw/react-md-editor";
 import toast from "react-hot-toast";
 import { createPage } from "@/lib/actions/pages";
+import { redirect } from "next/navigation";
 
 export default function Home() {
   const date = new Date();
@@ -45,7 +46,7 @@ export default function Home() {
         !info.title ||
         normalizeInput(info.title) == "" ||
         info.date == "" ||
-        !(toDate(today) > toDate(info.date))
+        !(toDate(today) >= toDate(info.date))
       ) {
         setInfo({ ...info, loading: false });
         return toast.error("Invalid Details");
@@ -60,6 +61,7 @@ export default function Home() {
           loading: false,
           date: today,
         });
+        redirect(`/page/${res}`);
       } else {
         toast.error("Internal Error");
         setInfo({ ...info, loading: false });

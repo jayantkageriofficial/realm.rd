@@ -46,7 +46,6 @@ dbConnect()
     if (global.mongoose.conn) {
       await mongoose.disconnect();
       info("MongoDB disconnected on app termination");
-      process.exit(0);
     }
   });
 });

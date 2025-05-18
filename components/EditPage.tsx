@@ -1,0 +1,185 @@
+"use client";
+
+import React from "react";
+import toast from "react-hot-toast";
+import MDEditor, { commands } from "@uiw/react-md-editor";
+import { editPage } from "@/lib/actions/pages";
+import { redirect } from "next/navigation";
+
+export default function EditPage(props: {
+  id: string;
+  title: string;
+  content: string;
+  date: string;
+}) {
+  const today = new Date().toISOString().split("T")[0];
+
+  const [info, setInfo] = React.useState<{
+    id: string;
+    title: string;
+    value: string;
+    loading: boolean;
+    date: string;
+  }>({
+    id: props.id,
+    title: props.title,
+    value: props.content,
+    date: props.date,
+    loading: false,
+  });
+
+  const normalizeInput = (str: string) =>
+    str.trim().replace(/\s+/g, " ").replace(/ +/g, " ");
+
+  const toDate = (str: string): Date => {
+    return new Date(str);
+  };
+
+  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInfo({ ...info, [e.target.id]: e.target.value });
+  };
+  const onSubmit = React.useCallback(
+    async (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
+      e.preventDefault();
+      setInfo({ ...info, loading: true });
+      if (
+        normalizeInput(info.value) == "" ||
+        !info.title ||
+        normalizeInput(info.title) == "" ||
+        info.date == "" ||
+        !(toDate(today) >= toDate(info.date))
+      ) {
+        setInfo({ ...info, loading: false });
+        return toast.error("Invalid Details");
+      }
+
+      const res = await editPage(
+        info.id,
+        info.title,
+        info.value,
+        new Date(info.date)
+      );
+
+      if (res) {
+        toast.success("Updated the Page");
+        return redirect(`/page/${info.id}`);
+      } else {
+        toast.error("Internal Error");
+        setInfo({ ...info, loading: false });
+      }
+    },
+
+    [info, today]
+  );
+
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === "Enter") {
+        e.preventDefault();
+        onSubmit(e);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onSubmit]);
+
+  return (
+    <div className="md:w-1/2">
+      <input
+        id="title"
+        type="text"
+        className="block mb-3 w-full py-3 border rounded-lg px-5 bg-[#0D1117] text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40"
+        placeholder="Title"
+        autoComplete="off"
+        value={info.title}
+        onChange={onChange}
+      />
+
+      <MDEditor
+        value={info.value}
+        className="prose max-w-full min-h-fit"
+        onChange={(e) =>
+          !info.loading &&
+          setInfo({
+            ...info,
+            value: e || "",
+          })
+        }
+        preview="live"
+        data-color-mode="dark"
+        tabIndex={-1}
+        commands={[
+          commands.bold,
+          commands.italic,
+          commands.strikethrough,
+          commands.divider,
+          commands.link,
+          commands.quote,
+          commands.code,
+          commands.codeBlock,
+          commands.image,
+          commands.table,
+          commands.divider,
+          commands.unorderedListCommand,
+          commands.orderedListCommand,
+          commands.checkedListCommand,
+        ].map((cmd) => ({
+          ...cmd,
+          buttonProps: {
+            ...cmd.buttonProps,
+            tabIndex: -1,
+          },
+        }))}
+        extraCommands={[
+          commands.codeEdit,
+          commands.codeLive,
+          commands.codePreview,
+        ].map((cmd) => ({
+          ...cmd,
+          buttonProps: {
+            ...cmd.buttonProps,
+            tabIndex: -1,
+          },
+        }))}
+      />
+
+      <input
+        id="date"
+        type="date"
+        className="block mt-3 w-full py-3 border rounded-lg px-5 bg-[#0D1117] text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40 "
+        placeholder="Date"
+        autoComplete="off"
+        max={new Date().toISOString().split("T")[0]}
+        value={info.date}
+        onChange={onChange}
+      />
+
+      <button
+        type="submit"
+        className="flex items-center px-4 py-2 mt-3 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-red-600 rounded-lg hover:bg-red-500 focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-80 cursor-pointer w-full justify-center"
+        onClick={onSubmit}
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.5}
+          stroke="currentColor"
+          className="w-5 h-5 mx-0.5"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10"
+          />
+        </svg>
+
+        <span className="mx-0.5 lowercase">
+          <i>update it</i>
+        </span>
+      </button>
+    </div>
+  );
+}
