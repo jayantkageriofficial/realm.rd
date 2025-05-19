@@ -25,7 +25,7 @@ export default async function Page() {
         {pages?.map((page) => (
           <div
             key={page.id}
-            className="my-4 px-8 py-4 rounded-lg shadow-md bg-primary border-2 border-secondary cursor-pointer hover:border-blue-700 hover:transition-all transform-fill"
+            className="my-4 px-8 py-4 rounded-lg shadow-md border-2 border-secondary cursor-pointer hover:border-blue-700 hover:transition-all transform-fill"
           >
             <Link href={`/page/${page.id}`}>
               <div className="flex items-center justify-between">
