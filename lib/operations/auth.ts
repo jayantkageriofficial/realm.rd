@@ -160,14 +160,18 @@ export async function login(
   username: string,
   password: string,
   ip: string
-): Promise<null | {
-  token: string;
-  user: {
-    name: string;
-    username: string;
-    timestamp?: Date;
-  };
-}> {
+): Promise<
+  | null
+  | "locked"
+  | {
+      token: string;
+      user: {
+        name: string;
+        username: string;
+        timestamp?: Date;
+      };
+    }
+> {
   const user: User | null = await UserSchema.findOne({
     username: username.toLowerCase(),
   });
@@ -182,6 +186,7 @@ export async function login(
         blocked: true,
       });
       await closeAllConnections();
+      return "locked";
     }
   }
   if (!check) return null;

@@ -35,6 +35,10 @@ export default function Login(props: {
       return toast.error("Invalid Credentials");
     }
     const res = await login(info.username || "", info.password || "");
+    if (res == "locked") {
+      toast.error("Application Locked");
+      return redirect("/locked");
+    }
     if (!res) {
       setInfo({ ...info, loading: false });
       return toast.error("Invalid Credentials");

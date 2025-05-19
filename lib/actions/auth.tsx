@@ -9,6 +9,7 @@ export async function Login(username: string, password: string) {
   const ip = getClientIp(await headers());
   const auth = await login(username, password, ip as string);
   if (!auth) return null;
+  if (auth == "locked") return "locked";
   cookieStore.set("session", JSON.stringify(auth));
   return JSON.stringify(auth);
 }
