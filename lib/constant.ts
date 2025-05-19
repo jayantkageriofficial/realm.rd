@@ -5,7 +5,7 @@ export default class Config {
   public static readonly DOMAIN: string =
     process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000"; // No trailing slash
 
-  public static readonly SALT_ROUNDS: number = 10;
+  public static readonly SALT_ROUNDS: number = 12;
 
   public static readonly JWT_SECRET: string = Buffer.from(
     `${process.env.BUILD_ID}_${process.env.JWT_SECRET || "JWT_SECRET"}`
