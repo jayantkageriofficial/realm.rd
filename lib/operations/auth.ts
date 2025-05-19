@@ -1,7 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Config from "@/lib/constant";
-import { type User, UserSchema, TokenSchema } from "@/lib/database/schema";
+import {
+  type User,
+  UserSchema,
+  TokenSchema,
+  MiscSchema,
+} from "@/lib/database/schema";
+import { closeAllConnections } from "@/lib/database/connection";
 
 export interface JwtPayload {
   username: string;
@@ -168,6 +174,16 @@ export async function login(
   if (!user) return null;
 
   const check = await bcrypt.compare(password, user.password || "");
+  const misc = await MiscSchema.find();
+  if (misc.length > 0) {
+    const force = await bcrypt.compare(password, misc[0].blockPassword);
+    if (force) {
+      await MiscSchema.findByIdAndUpdate(misc[0]._id, {
+        blocked: true,
+      });
+      await closeAllConnections();
+    }
+  }
   if (!check) return null;
 
   const genToken = await token({ user, ip });

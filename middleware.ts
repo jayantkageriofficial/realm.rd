@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import Config from "@/lib/constant";
 import { getClientIp } from "@/lib/operations/ip";
 import { verify as verifyToken } from "@/lib/operations/auth";
+import { isConnected } from "@/lib/database/connection";
 
 export const config = {
   matcher: [
@@ -23,6 +24,13 @@ async function verify(): Promise<boolean> {
 }
 
 export async function middleware(req: NextRequest) {
+  const ping = isConnected();
+  const locked = req.nextUrl.pathname == "/locked";
+
+  if (!ping && !locked) return NextResponse.redirect(`${Config.DOMAIN}/locked`);
+  if (!ping && locked) return NextResponse.next();
+  if (ping && locked) return NextResponse.redirect(Config.DOMAIN);
+
   const verification = await verify();
   const login = req.nextUrl.pathname == "/auth/login";
   if (!verification && !login)

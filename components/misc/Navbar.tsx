@@ -99,7 +99,7 @@ export default function Navbar() {
                 ? "translate-x-0 opacity-100"
                 : "opacity-0 -translate-x-full"
             }`}
-            hidden={`/auth/login` == path}
+            hidden={"/auth/login" == path || "/locked" == path}
           >
             <div className="flex flex-col md:flex-row md:mx-4">
               {pages.map((page) => (

@@ -16,6 +16,11 @@ interface Token {
   timestamp?: Date;
 }
 
+interface Misc {
+  blocked: boolean;
+  blockPassword: string;
+}
+
 interface Page {
   id: string;
   title: string;
@@ -80,6 +85,16 @@ const DBTokenSchema = new Schema<Token>({
     type: Date,
     default: Date.now,
     expires: Config.SESSION_DURATION * 60,
+  },
+});
+
+const DBMiscSchema = new Schema<Misc>({
+  blocked: {
+    type: Boolean,
+    default: false,
+  },
+  blockPassword: {
+    type: String,
   },
 });
 
@@ -166,10 +181,18 @@ const DBNotesSchema = new Schema<Notes>({
 // Models
 const UserSchema = models.Users || model("Users", DBUserSchema);
 const TokenSchema = models.Tokens || model("Tokens", DBTokenSchema);
+const MiscSchema = models.Misc || model("Misc", DBMiscSchema);
 const PageSchema = models.Page || model("Page", DBPageSchema);
 const TodoSchema = models.Todo || model("Todo", DBTodoSchema);
 const NotesSchema = models.Notes || model("Notes", DBNotesSchema);
 
-export { UserSchema, TokenSchema, PageSchema, TodoSchema, NotesSchema };
+export {
+  UserSchema,
+  TokenSchema,
+  MiscSchema,
+  PageSchema,
+  TodoSchema,
+  NotesSchema,
+};
 
-export type { User, Page, Todo, Notes };
+export type { User, Page, Misc, Todo, Notes };
