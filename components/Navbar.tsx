@@ -3,11 +3,17 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useClickAway } from "react-use";
 import { usePathname } from "next/navigation";
 import logo from "@/assets/jayantkageri.png";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  useClickAway(ref, () => {
+    if (isOpen) setIsOpen(false);
+  });
+
   const pages: {
     path: string;
     title: string;
@@ -30,7 +36,10 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="relative rounded-full mt-2 mx-2 bg-secondary select-none">
+      <nav
+        className="relative rounded-full mt-2 mx-2 bg-secondary select-none"
+        ref={ref}
+      >
         <div className="px-6 py-2 mx-auto md:flex md:justify-between md:items-center">
           <div className="flex items-center justify-between">
             <Link href="/">
