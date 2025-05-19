@@ -37,6 +37,13 @@ export async function get(id: string, user: User): Promise<Page | null> {
   } as Page;
 }
 
+export async function getCount(user: User): Promise<number> {
+  const res = await PageSchema.countDocuments({
+    "user.username": user.username,
+  });
+  return res || 0;
+}
+
 export async function getAll(
   user: User,
   page?: number
@@ -45,7 +52,7 @@ export async function getAll(
     "user.username": user.username,
   })
     .sort({ date: -1, timestamp: -1 })
-    .limit((page || 1) * 20);
+    .limit((page || 1) * 10);
   const results = await Promise.all(res.map((page) => get(page.id, user)));
   const pages: Page[] | null = results.filter(
     (page): page is Page => page !== null

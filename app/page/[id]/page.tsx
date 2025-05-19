@@ -3,8 +3,8 @@
 import React from "react";
 import Link from "next/link";
 import NotFound from "@/app/not-found";
-import DltPage from "@/components/DltPage";
-import Markdown from "@/components/Markdown";
+import Dlt from "@/components/pages/dlt";
+import Markdown from "@/components/misc/Markdown";
 import { getPage } from "@/lib/actions/pages";
 
 export default async function Page(props: { params: Promise<{ id: string }> }) {
@@ -34,7 +34,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             </svg>
           </Link>
 
-          <DltPage id={params.id} />
+          <Dlt id={params.id} />
         </div>
 
         <div className="md:flex md:justify-center md:items-center">

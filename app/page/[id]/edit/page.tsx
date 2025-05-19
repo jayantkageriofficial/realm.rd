@@ -2,7 +2,7 @@
 
 import React from "react";
 import NotFound from "@/app/not-found";
-import EditPage from "@/components/EditPage";
+import EditPage from "@/components/pages/edit";
 import { getPage } from "@/lib/actions/pages";
 
 export default async function Edit(props: { params: Promise<{ id: string }> }) {

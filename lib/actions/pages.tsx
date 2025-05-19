@@ -1,6 +1,6 @@
 "use server";
 
-import { create, get, edit, dlt } from "@/lib/operations/page";
+import { create, get, edit, dlt, getAll } from "@/lib/operations/page";
 import verify from "@/lib/actions/verify";
 import { type User } from "@/lib/database/schema";
 
@@ -10,21 +10,27 @@ export async function createPage(
   date: Date
 ): Promise<string> {
   const user = await verify();
-  const res = await create(
+  const page = await create(
     new Date().getTime().toString(),
     title,
     context,
     date,
     user as User
   );
-  return res.id;
+  return page.id;
 }
 
 export async function getPage(id: string): Promise<string | null> {
   const user = await verify();
-  const post = await get(id, user as User);
-  if (!post) return null;
-  return JSON.stringify(post);
+  const page = await get(id, user as User);
+  if (!page) return null;
+  return JSON.stringify(page);
+}
+
+export async function getPages(page: number) {
+  const user = await verify();
+  const pages = await getAll(user as User, page);
+  return JSON.stringify(pages);
 }
 
 export async function editPage(
@@ -34,12 +40,12 @@ export async function editPage(
   date: Date
 ): Promise<string> {
   const user = await verify();
-  const update = await edit(id, title, context, date, user as User);
-  return update.id;
+  const page = await edit(id, title, context, date, user as User);
+  return page.id;
 }
 
 export async function dltPage(id: string): Promise<string | null> {
   const user = await verify();
-  const res = await dlt(id, user as User);
-  return res.id || res;
+  const page = await dlt(id, user as User);
+  return page.id || page;
 }
