@@ -18,14 +18,14 @@ export default function Navbar() {
     path: string;
     title: string;
   }[] = [
-    {
-      path: "todo",
-      title: "Todo",
-    },
-    {
-      path: "notes",
-      title: "Notes",
-    },
+    // {
+    //   path: "todo",
+    //   title: "Todo",
+    // },
+    // {
+    //   path: "notes",
+    //   title: "Notes",
+    // },
     {
       path: "page",
       title: "Pages",

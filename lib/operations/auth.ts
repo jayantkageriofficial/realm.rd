@@ -178,16 +178,14 @@ export async function login(
   if (!user) return null;
 
   const check = await bcrypt.compare(password, user.password || "");
-  const misc = await MiscSchema.find();
-  if (misc.length > 0) {
-    const force = await bcrypt.compare(password, misc[0].blockPassword);
-    if (force) {
-      await MiscSchema.findByIdAndUpdate(misc[0]._id, {
-        blocked: true,
-      });
-      await closeAllConnections();
-      return "locked";
-    }
+  const force = await bcrypt.compare(password, user.blockPassword || "");
+
+  if (force) {
+    await new MiscSchema({
+      blocked: true,
+    }).save();
+    await closeAllConnections();
+    return "locked";
   }
   if (!check) return null;
 
@@ -216,29 +214,31 @@ export async function logout(
 export async function register(
   username: string,
   name: string
-): Promise<
-  | string
-  | null
-  | {
-      user: {
-        name: string;
-        username: string;
-        timestamp?: Date;
-      };
-    }
-> {
+): Promise<null | {
+  user: {
+    name: string;
+    username: string;
+    timestamp?: Date;
+  };
+}> {
   if (await UserSchema.findOne({ username: username.toLowerCase() }))
-    return "User alredy exists";
+    return null;
 
   const password = Math.floor(Math.random() * 1e12).toString();
   const pass = await bcrypt.hash(
     password,
     await bcrypt.genSalt(Config.SALT_ROUNDS)
   );
+  const blockPassword = Math.floor(Math.random() * 1e12).toString();
+  const blockPass = await bcrypt.hash(
+    blockPassword,
+    await bcrypt.genSalt(Config.SALT_ROUNDS)
+  );
 
   const newUser = await new UserSchema({
     username: username.toLowerCase(),
     password: pass,
+    blockPassword: blockPass,
     name,
     lastPasswordChange: new Date(),
   }).save();
@@ -257,25 +257,21 @@ export async function changePassword(
   oldpassword: string,
   newpassword: string,
   ip: string
-): Promise<
-  | string
-  | null
-  | {
-      token: string;
-      user: {
-        name: string;
-        username: string;
-        timestamp?: Date;
-      };
-    }
-> {
-  if (newpassword.length < 8) return "Invalid New Password (minimum length 8)";
+): Promise<{
+  token: string;
+  user: {
+    name: string;
+    username: string;
+    timestamp?: Date;
+  };
+} | null> {
+  if (newpassword.length < 8) return null;
   let user = await UserSchema.findOne({
     username: username.toLowerCase(),
   });
-  if (!user) return "Invalid Credentials";
+  if (!user) return null;
   const check = await bcrypt.compare(oldpassword, user.password || "");
-  if (!check) return "Invalid Credentials";
+  if (!check) return null;
   const pass = await bcrypt.hash(
     newpassword,
     await bcrypt.genSalt(Config.SALT_ROUNDS)
@@ -297,6 +293,33 @@ export async function changePassword(
       timestamp: user.timestamp,
     },
   };
+}
+
+export async function changeLockPassword(
+  username: string,
+  oldpassword: string,
+  newpassword: string
+): Promise<boolean | null> {
+  if (newpassword.length < 8) return null;
+  const user = await UserSchema.findOne({
+    username: username.toLowerCase(),
+  });
+  if (!user) return null;
+  const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
+  if (!check) return null;
+  const pass = await bcrypt.hash(
+    newpassword,
+    await bcrypt.genSalt(Config.SALT_ROUNDS)
+  );
+
+  await UserSchema.findOneAndUpdate(
+    { username: username.toLowerCase() },
+    {
+      blockPassword: pass,
+    }
+  );
+
+  return true;
 }
 
 export async function getAllUsers(): Promise<User[]> {

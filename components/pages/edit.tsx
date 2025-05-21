@@ -41,6 +41,7 @@ export default function EditPage(props: {
   const onSubmit = React.useCallback(
     async (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
+      const id = toast.loading("Processing");
       setInfo({ ...info, loading: true });
       if (
         normalizeInput(info.value) == "" ||
@@ -50,7 +51,7 @@ export default function EditPage(props: {
         !(toDate(today) >= toDate(info.date))
       ) {
         setInfo({ ...info, loading: false });
-        return toast.error("Invalid Details");
+        return toast.error("Invalid Details", { id });
       }
 
       const res = await editPage(
@@ -61,10 +62,10 @@ export default function EditPage(props: {
       );
 
       if (res) {
-        toast.success("Updated the Page");
+        toast.success("Updated the Page", { id });
         return redirect(`/page/${info.id}`);
       } else {
-        toast.error("Internal Error");
+        toast.error("Internal Error", { id });
         setInfo({ ...info, loading: false });
       }
     },

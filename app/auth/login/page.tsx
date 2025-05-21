@@ -25,30 +25,31 @@ export default function Login(props: {
   };
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const id = toast.loading("Processing");
     setInfo({ ...info, loading: true });
     if (!info.username || !info.password) {
       setInfo({ ...info, loading: false });
-      return toast.error("Fill all the fields");
+      return toast.error("Fill all the fields", { id });
     }
     if (info.password.length < 8) {
       setInfo({ ...info, loading: false });
-      return toast.error("Invalid Credentials");
+      return toast.error("Invalid Credentials", { id });
     }
     const res = await login(info.username || "", info.password || "");
     if (res == "locked") {
-      toast.error("Application Locked");
+      toast.error("Application Locked", { id });
       return redirect("/locked");
     }
     if (!res) {
       setInfo({ ...info, loading: false });
-      return toast.error("Invalid Credentials");
+      return toast.error("Invalid Credentials", { id });
     }
     const session = JSON.parse(res);
     if (!session.token) {
       setInfo({ ...info, loading: false });
-      return toast.error("Invalid Credentials");
+      return toast.error("Invalid Credentials", { id });
     }
-    toast.success("Logged In");
+    toast.success("Logged In", { id });
     setInfo({ username: "", password: "", loading: false });
     return redirect(path || "/");
   };

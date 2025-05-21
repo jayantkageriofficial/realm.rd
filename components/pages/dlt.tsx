@@ -12,11 +12,12 @@ export default function DltPage(props: { id: string }) {
         e.preventDefault();
         const cf = window.confirm("Are you sure you want to Delete this Page?");
         if (!cf) return toast.success("Terminated Page Deletion");
+        const id = toast.loading("Processing");
         const res = await dltPage(props.id);
         if (res) {
-          toast.success("Deleted the Page");
+          toast.success("Deleted the Page", { id });
           redirect("/");
-        } else toast.error("Internal Error");
+        } else toast.error("Internal Error", { id });
       }}
       className="flex items-center px-2 text-gray-200 cursor-pointer"
     >

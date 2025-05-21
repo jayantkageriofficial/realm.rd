@@ -6,6 +6,7 @@ interface User {
   name: string;
   username: string;
   password?: string;
+  blockPassword?: string;
   lastPasswordChange?: Date;
   timestamp?: Date;
 }
@@ -18,7 +19,6 @@ interface Token {
 
 interface Misc {
   blocked: boolean;
-  blockPassword: string;
 }
 
 interface Page {
@@ -61,6 +61,10 @@ const DBUserSchema = new Schema<User>({
     type: String,
     required: true,
   },
+  blockPassword: {
+    type: String,
+    required: true,
+  },
   lastPasswordChange: {
     type: Date,
     required: true,
@@ -92,9 +96,6 @@ const DBMiscSchema = new Schema<Misc>({
   blocked: {
     type: Boolean,
     default: false,
-  },
-  blockPassword: {
-    type: String,
   },
 });
 
