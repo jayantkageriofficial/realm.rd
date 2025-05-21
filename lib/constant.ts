@@ -1,9 +1,12 @@
 import { type Algorithm } from "jsonwebtoken";
 
+const DEVELOPMENT = process.env.NODE_ENV !== "production";
+
 /** @description Refer README.md */
 export default class Config {
-  public static readonly DOMAIN: string =
-    process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000"; // No trailing slash
+  public static readonly DOMAIN: string = DEVELOPMENT
+    ? "http://localhost:3000"
+    : process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000"; // No trailing slash
 
   public static readonly SALT_ROUNDS: number = 12;
 
