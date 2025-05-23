@@ -59,11 +59,21 @@
   }
 }
 
-.w-md-editor,
-.w-md-editor * {
+.mdxeditor,
+.mdxeditor * {
   font-family: inherit;
   color: inherit;
   line-height: normal;
   background-color: inherit;
   box-sizing: border-box;
+  border-radius: 8px;
+}
+
+.ͼo .cm-activeLineGutter {
+  background-color: #0d1117;
+}
+
+.mdxeditor-root-contenteditable {
+  background-color: #0d1117;
+  margin-top: -5px;
 }

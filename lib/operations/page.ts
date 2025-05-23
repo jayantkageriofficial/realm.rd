@@ -7,7 +7,7 @@ export async function create(
   content: string,
   date: Date,
   user: User
-) {
+): Promise<Page> {
   const name = await encryptData(title);
   const encrypted = await encryptData(content);
   const page = await PageSchema.create({
@@ -66,7 +66,7 @@ export async function edit(
   content: string,
   date: Date,
   user: User
-) {
+): Promise<Page | null> {
   const page = await PageSchema.findOne({
     id,
   });
@@ -82,7 +82,7 @@ export async function edit(
   return res;
 }
 
-export async function dlt(id: string, user: User) {
+export async function dlt(id: string, user: User): Promise<Page | null> {
   const page = await PageSchema.findOne({
     id,
   });

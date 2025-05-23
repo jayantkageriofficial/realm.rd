@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
+import "@mdxeditor/editor/style.css";
 import Navbar from "@/components/misc/Navbar";
 import Footer from "@/components/misc/Footer";
 import Shortcut from "@/components/misc/Shortcut";

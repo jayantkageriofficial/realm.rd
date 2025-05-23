@@ -1,10 +1,12 @@
 "use client";
 
 import React from "react";
-import MDEditor, { commands } from "@uiw/react-md-editor";
 import toast from "react-hot-toast";
-import { createPage } from "@/lib/actions/pages";
 import { redirect } from "next/navigation";
+import { MDXEditor } from "@mdxeditor/editor";
+import { type MDXEditorMethods } from "@mdxeditor/editor";
+import { createPage } from "@/lib/actions/pages";
+import { plugins } from "@/components/misc/Editor";
 
 export default function Home() {
   const date = new Date();
@@ -13,6 +15,7 @@ export default function Home() {
     2,
     "0"
   )}-${String(date.getDate()).padStart(2, "0")}`;
+  const editor = React.useRef<MDXEditorMethods>(null);
 
   const [info, setInfo] = React.useState<{
     title: string;
@@ -41,9 +44,11 @@ export default function Home() {
     async (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       const id = toast.loading("Processing");
+      const value = editor.current?.getMarkdown();
+
       setInfo({ ...info, loading: true });
       if (
-        normalizeInput(info.value) == "" ||
+        normalizeInput(value || "") == "" ||
         !info.title ||
         normalizeInput(info.title) == "" ||
         info.date == "" ||
@@ -53,7 +58,11 @@ export default function Home() {
         return toast.error("Invalid Details", { id });
       }
 
-      const res = await createPage(info.title, info.value, new Date(info.date));
+      const res = await createPage(
+        info.title,
+        value || "",
+        new Date(info.date)
+      );
       if (res) {
         toast.success("Created a Page", { id });
         setInfo({
@@ -111,53 +120,15 @@ export default function Home() {
               onChange={onChange}
             />
 
-            <MDEditor
-              value={info.value}
-              className="prose max-w-full min-h-fit"
-              onChange={(e) =>
-                !info.loading &&
-                setInfo({
-                  ...info,
-                  value: e || "",
-                })
-              }
-              preview="live"
-              data-color-mode="dark"
-              tabIndex={-1}
-              commands={[
-                commands.bold,
-                commands.italic,
-                commands.strikethrough,
-                commands.divider,
-                commands.link,
-                commands.quote,
-                commands.code,
-                commands.codeBlock,
-                commands.image,
-                commands.table,
-                commands.divider,
-                commands.unorderedListCommand,
-                commands.orderedListCommand,
-                commands.checkedListCommand,
-              ].map((cmd) => ({
-                ...cmd,
-                buttonProps: {
-                  ...cmd.buttonProps,
-                  tabIndex: -1,
-                },
-              }))}
-              extraCommands={[
-                commands.codeEdit,
-                commands.codeLive,
-                commands.codePreview,
-              ].map((cmd) => ({
-                ...cmd,
-                buttonProps: {
-                  ...cmd.buttonProps,
-                  tabIndex: -1,
-                },
-              }))}
-            />
+            <React.Suspense fallback={null}>
+              <MDXEditor
+                markdown={info.value}
+                ref={editor}
+                className="prose min-w-full min-h-fit dark-theme"
+                plugins={plugins("", "rich-text")}
+                readOnly={info.loading}
+              />
+            </React.Suspense>
 
             <input
               id="date"

@@ -13,7 +13,7 @@ export default async function Edit(props: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <section id="home" className="min-h-screen mt-20">
+      <section id="edit-page" className="min-h-screen mt-20">
         <div className="m-4 md:flex md:justify-center md:items-center">
           <div className="md:w-1/2 px-4 mb-4 md:mb-0">
             <div className="text-gray-400 md:text-lg italic font-normal">

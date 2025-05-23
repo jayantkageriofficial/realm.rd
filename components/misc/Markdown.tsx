@@ -1,27 +1,21 @@
 "use client";
 
 import React from "react";
-import MDEditor from "@uiw/react-md-editor";
+import { MDXEditor } from "@mdxeditor/editor";
+import { plugins } from "@/components/misc/Editor";
 
 export default function Markdown(props: { content: string }) {
   return (
     <>
       <div className="prose prose-invert max-w-none">
-        <MDEditor.Markdown
-          source={props.content}
-          className="!bg-transparent !p-0 wmde-markdown "
-          components={{
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            img: ({ node, ...props }) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                {...props}
-                className="rounded-lg border p-2 mx-2"
-                alt={props.alt || ""}
-              />
-            ),
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <MDXEditor
+            markdown={props.content}
+            className="prose min-w-full dark-theme"
+            plugins={plugins("", "view-only")}
+            readOnly={true}
+          />
+        </React.Suspense>
       </div>
     </>
   );

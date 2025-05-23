@@ -41,11 +41,11 @@ export async function editPage(
 ): Promise<string> {
   const user = await verify();
   const page = await edit(id, title, context, date, user as User);
-  return page.id;
+  return page?.id || "";
 }
 
 export async function dltPage(id: string): Promise<string | null> {
   const user = await verify();
   const page = await dlt(id, user as User);
-  return page.id || page;
+  return page?.id || null;
 }

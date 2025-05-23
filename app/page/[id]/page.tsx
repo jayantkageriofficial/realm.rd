@@ -15,7 +15,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   return (
     <>
-      <section id="home" className="min-h-screen mt-10 m-4">
+      <section id="page" className="min-h-screen mt-10 m-4">
         <div className="flex justify-end items-center space-x-2">
           <Link href={`/page/${params.id}/edit`}>
             <svg

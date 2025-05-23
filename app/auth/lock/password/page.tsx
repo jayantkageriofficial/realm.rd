@@ -47,7 +47,7 @@ export default function LockPassword() {
 
   return (
     <>
-      <section className="min-h-screen flex">
+      <section id="app-pwd" className="min-h-screen flex">
         <div className="w-full max-w-md mx-auto my-auto overflow-hidden rounded-lg bg-primary">
           <div className="px-6 py-4">
             <div className="flex justify-baseline mx-auto">

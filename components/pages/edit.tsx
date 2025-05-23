@@ -2,9 +2,11 @@
 
 import React from "react";
 import toast from "react-hot-toast";
-import MDEditor, { commands } from "@uiw/react-md-editor";
+import { MDXEditor } from "@mdxeditor/editor";
+import { type MDXEditorMethods } from "@mdxeditor/editor";
 import { editPage } from "@/lib/actions/pages";
 import { redirect } from "next/navigation";
+import { plugins } from "@/components/misc/Editor";
 
 export default function EditPage(props: {
   id: string;
@@ -13,6 +15,7 @@ export default function EditPage(props: {
   date: string;
 }) {
   const today = new Date().toISOString().split("T")[0];
+  const editor = React.useRef<MDXEditorMethods>(null);
 
   const [info, setInfo] = React.useState<{
     id: string;
@@ -42,9 +45,11 @@ export default function EditPage(props: {
     async (e: KeyboardEvent | React.MouseEvent<HTMLButtonElement>) => {
       e.preventDefault();
       const id = toast.loading("Processing");
+      const value = editor.current?.getMarkdown();
+
       setInfo({ ...info, loading: true });
       if (
-        normalizeInput(info.value) == "" ||
+        normalizeInput(value || "") == "" ||
         !info.title ||
         normalizeInput(info.title) == "" ||
         info.date == "" ||
@@ -57,7 +62,7 @@ export default function EditPage(props: {
       const res = await editPage(
         info.id,
         info.title,
-        info.value,
+        value || "",
         new Date(info.date)
       );
 
@@ -98,52 +103,12 @@ export default function EditPage(props: {
         onChange={onChange}
       />
 
-      <MDEditor
-        value={info.value}
-        className="prose max-w-full min-h-fit"
-        onChange={(e) =>
-          !info.loading &&
-          setInfo({
-            ...info,
-            value: e || "",
-          })
-        }
-        preview="live"
-        data-color-mode="dark"
-        tabIndex={-1}
-        commands={[
-          commands.bold,
-          commands.italic,
-          commands.strikethrough,
-          commands.divider,
-          commands.link,
-          commands.quote,
-          commands.code,
-          commands.codeBlock,
-          commands.image,
-          commands.table,
-          commands.divider,
-          commands.unorderedListCommand,
-          commands.orderedListCommand,
-          commands.checkedListCommand,
-        ].map((cmd) => ({
-          ...cmd,
-          buttonProps: {
-            ...cmd.buttonProps,
-            tabIndex: -1,
-          },
-        }))}
-        extraCommands={[
-          commands.codeEdit,
-          commands.codeLive,
-          commands.codePreview,
-        ].map((cmd) => ({
-          ...cmd,
-          buttonProps: {
-            ...cmd.buttonProps,
-            tabIndex: -1,
-          },
-        }))}
+      <MDXEditor
+        markdown={info.value}
+        ref={editor}
+        className="prose min-w-full min-h-fit dark-theme"
+        plugins={plugins(info.value, "rich-text")}
+        readOnly={info.loading}
       />
 
       <input
