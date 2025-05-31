@@ -58,7 +58,7 @@ export default function LockPassword() {
               />
             </div>
 
-            <h3 className="mt-3 text-xl font-medium text-start text-gray-600 dark:text-gray-200">
+            <h3 className="mt-3 text-xl font-medium text-start text-gray-200">
               Change Application Lock Password
             </h3>
 

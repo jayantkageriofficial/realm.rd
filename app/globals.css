@@ -69,11 +69,185 @@
   border-radius: 8px;
 }
 
+.mdxeditor-rich-text-editor,
+.mdxeditor-source-editor,
+.mdxeditor-diff-editor,
+.mdxeditor-root-contenteditable,
 .ͼo .cm-activeLineGutter {
   background-color: #0d1117;
+  margin-top: -5px;
+  color: #fff;
 }
 
-.mdxeditor-root-contenteditable {
-  background-color: #0d1117;
-  margin-top: -5px;
+.dark-mdx-editor [data-editor-type="root"] {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+  border: 1px solid #404040 !important;
+}
+
+.dark-mdx-editor .ProseMirror {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor .cm-editor {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor .cm-content {
+  background-color: #1e1e1e !important;
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor .cm-focused {
+  outline: 1px solid #007acc !important;
+}
+
+.dark-mdx-editor .cm-gutter {
+  background-color: #252526 !important;
+  color: #858585 !important;
+  border-right: 1px solid #404040 !important;
+}
+
+.dark-mdx-editor .cm-gutterElement {
+  color: #858585 !important;
+}
+
+.dark-mdx-editor .cm-activeLine {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.dark-mdx-editor .cm-activeLineGutter {
+  background-color: #252526 !important;
+}
+
+.dark-mdx-editor [data-viewmode="diff"] {
+  background-color: #1e1e1e !important;
+}
+
+.dark-mdx-editor [data-viewmode="diff"] .cm-editor {
+  background-color: #1e1e1e !important;
+}
+
+.dark-mdx-editor .cm-deletedChunk {
+  background-color: rgba(255, 129, 130, 0.2) !important;
+}
+
+.dark-mdx-editor .cm-insertedChunk {
+  background-color: rgba(46, 160, 67, 0.2) !important;
+}
+
+.dark-mdx-editor [data-toolbar-editor] {
+  background-color: #2d2d30 !important;
+  border-bottom: 1px solid #404040 !important;
+}
+
+.dark-mdx-editor [data-toolbar-editor] button {
+  color: #cccccc !important;
+  background-color: transparent !important;
+  border: 1px solid transparent !important;
+}
+
+.dark-mdx-editor [data-toolbar-editor] button:hover {
+  background-color: #404040 !important;
+  border-color: #007acc !important;
+}
+
+.dark-mdx-editor [data-toolbar-editor] button[data-active="true"] {
+  background-color: #007acc !important;
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor [data-toolbar-editor] select {
+  background-color: #2d2d30 !important;
+  color: #cccccc !important;
+  border: 1px solid #404040 !important;
+}
+
+.dark-mdx-editor .ProseMirror pre {
+  background-color: #252526 !important;
+  color: #ffffff !important;
+  border: 1px solid #404040 !important;
+}
+
+.dark-mdx-editor .ProseMirror code {
+  background-color: #252526 !important;
+  color: #ffffff !important;
+  padding: 2px 4px !important;
+  border-radius: 3px !important;
+}
+
+.dark-mdx-editor .ProseMirror p code {
+  background-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor .ProseMirror h1,
+.dark-mdx-editor .ProseMirror h2,
+.dark-mdx-editor .ProseMirror h3,
+.dark-mdx-editor .ProseMirror h4,
+.dark-mdx-editor .ProseMirror h5,
+.dark-mdx-editor .ProseMirror h6 {
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor .ProseMirror blockquote {
+  border-left: 4px solid #007acc !important;
+  background-color: rgba(0, 122, 204, 0.1) !important;
+  color: #cccccc !important;
+}
+
+.dark-mdx-editor .ProseMirror ul,
+.dark-mdx-editor .ProseMirror ol {
+  color: #ffffff !important;
+}
+
+.dark-mdx-editor .ProseMirror a {
+  color: #4fc3f7 !important;
+}
+
+.dark-mdx-editor .ProseMirror table {
+  border-color: #404040 !important;
+}
+
+.dark-mdx-editor .ProseMirror td,
+.dark-mdx-editor .ProseMirror th {
+  border-color: #404040 !important;
+  background-color: transparent !important;
+}
+
+.dark-mdx-editor .ProseMirror th {
+  background-color: #252526 !important;
+}
+
+.dark-mdx-editor .ProseMirror ::selection {
+  background-color: rgba(0, 122, 204, 0.3) !important;
+}
+
+.dark-mdx-editor .cm-selectionBackground {
+  background-color: rgba(0, 122, 204, 0.3) !important;
+}
+
+.dark-mdx-editor .cm-scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark-mdx-editor .cm-scroller::-webkit-scrollbar-track {
+  background-color: #1e1e1e;
+}
+
+.dark-mdx-editor .cm-scroller::-webkit-scrollbar-thumb {
+  background-color: #404040;
+  border-radius: 4px;
+}
+
+.dark-mdx-editor .cm-scroller::-webkit-scrollbar-thumb:hover {
+  background-color: #555555;
+}
+
+.dark-mdx-editor [data-editor-type="root"]:focus-within {
+  border-color: #007acc !important;
+  box-shadow: 0 0 0 1px #007acc !important;
 }

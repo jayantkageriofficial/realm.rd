@@ -22,10 +22,10 @@ export default function Navbar() {
     //   path: "todo",
     //   title: "Todo",
     // },
-    // {
-    //   path: "notes",
-    //   title: "Notes",
-    // },
+    {
+      path: "notes",
+      title: "Notes",
+    },
     {
       path: "page",
       title: "Pages",

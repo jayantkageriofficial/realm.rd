@@ -22,6 +22,8 @@ import {
   codeMirrorPlugin,
 } from "@mdxeditor/editor";
 
+import { oneDark } from "@codemirror/theme-one-dark";
+
 const plugins = (
   md: string,
   mode: "rich-text" | "source" | "diff" | "view-only"
@@ -60,6 +62,7 @@ const plugins = (
         yaml: "YAML",
         txt: "Text",
       },
+      codeMirrorExtensions: [oneDark],
     }),
     diffSourcePlugin({
       viewMode: mode == "view-only" ? "rich-text" : mode,

@@ -5,12 +5,11 @@ import toast from "react-hot-toast";
 import { redirect } from "next/navigation";
 import { MDXEditor } from "@mdxeditor/editor";
 import { type MDXEditorMethods } from "@mdxeditor/editor";
-import { createPage } from "@/lib/actions/pages";
+import { createNote } from "@/lib/actions/notes";
 import { plugins } from "@/components/misc/Editor";
 
 export default function Home() {
   const date = new Date();
-  const today = new Date().toISOString().split("T")[0];
   const init = `# ${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
     2,
     "0"
@@ -21,20 +20,14 @@ export default function Home() {
     title: string;
     value: string;
     loading: boolean;
-    date: string;
   }>({
     title: init,
     value: "",
-    date: today,
     loading: false,
   });
 
   const normalizeInput = (str: string) =>
     str.trim().replace(/\s+/g, " ").replace(/ +/g, " ");
-
-  const toDate = (str: string): Date => {
-    return new Date(str);
-  };
 
   const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInfo({ ...info, [e.target.id]: e.target.value });
@@ -50,35 +43,28 @@ export default function Home() {
       if (
         normalizeInput(value || "") == "" ||
         !info.title ||
-        normalizeInput(info.title) == "" ||
-        info.date == "" ||
-        !(toDate(today) >= toDate(info.date))
+        normalizeInput(info.title) == ""
       ) {
         setInfo({ ...info, loading: false });
         return toast.error("Invalid Details", { id });
       }
 
-      const res = await createPage(
-        info.title,
-        value || "",
-        new Date(info.date)
-      );
+      const res = await createNote(info.title, value || "");
       if (res) {
-        toast.success("Created a Page", { id });
+        toast.success("Created a Note", { id });
         setInfo({
           title: init,
           value: "",
           loading: false,
-          date: today,
         });
-        redirect(`/page/${res}`);
+        redirect(`/notes/${res}`);
       } else {
         toast.error("Internal Error", { id });
         setInfo({ ...info, loading: false });
       }
     },
 
-    [info, today, init]
+    [info, init]
   );
 
   React.useEffect(() => {
@@ -96,17 +82,16 @@ export default function Home() {
 
   return (
     <>
-      <section id="home" className="min-h-screen mt-20">
+      <section id="new-note" className="min-h-screen mt-20">
         <div className="m-4 md:flex md:justify-center md:items-center">
           <div className="md:w-1/2 px-4 mb-4 md:mb-0">
-            <h1 className="mt-4 text-3xl font-bold text-purple-600">
-              REVAMP
-              <span className="text-blue-700">.RD</span>
+            <h1 className="mt-4 text-3xl font-bold text-white">
+              Add a <span className="text-red-600">New Note</span>
             </h1>
             <div className="text-gray-300 md:text-lg italic font-normal">
-              Scribble the plans,{" "}
-              <span className="text-red-500 underline font-bold">spill</span>{" "}
-              the thoughts.
+              Brain{" "}
+              <span className="text-blue-500 underline font-bold">dumps</span>{" "}
+              made beautiful.
             </div>
           </div>
           <div className="md:w-1/2">
@@ -130,17 +115,6 @@ export default function Home() {
               />
             </React.Suspense>
 
-            <input
-              id="date"
-              type="date"
-              className="block mt-3 w-full py-3 border rounded-lg px-5 bg-[#0D1117] text-amber-50 border-gray-600 focus:border-blue-300 focus:ring-blue-300 focus:outline-none focus:ring focus:ring-opacity-40 "
-              placeholder="Date"
-              autoComplete="off"
-              max={new Date().toISOString().split("T")[0]}
-              value={info.date}
-              onChange={onChange}
-            />
-
             <button
               type="submit"
               className="flex items-center px-4 py-2 mt-3 font-medium tracking-wide text-white capitalize transition-colors duration-300 transform bg-red-600 rounded-lg hover:bg-red-500 focus:outline-none focus:ring focus:ring-blue-500 focus:ring-opacity-80 cursor-pointer w-full justify-center"
@@ -162,7 +136,7 @@ export default function Home() {
               </svg>
 
               <span className="mx-0.5 lowercase">
-                <i>Spill it</i>
+                <i>capture it</i>
               </span>
             </button>
           </div>

@@ -9,12 +9,13 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@codemirror/theme-one-dark": "^6.1.2",
     "@mdxeditor/editor": "^3.32.3",
     "@radix-ui/colors": "^3.0.0",
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.14.1",
-    "next": "^15.4.0-canary.48",
+    "next": "^15.4.0-canary.59",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
