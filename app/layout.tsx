@@ -8,7 +8,7 @@ import { Toaster } from "react-hot-toast";
 import logo from "@/assets/logo.svg";
 
 export const metadata: Metadata = {
-  title: "revamp.rd",
+  title: "realm.rd",
   description: "Scribble the plans, spill the thoughts.",
   icons: logo.src,
 };

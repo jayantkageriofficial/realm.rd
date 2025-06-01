@@ -7,7 +7,7 @@ const DOMAIN_SCHEMA = DEVELOPMENT
 const date = new Date();
 const BUILD_ID = DEVELOPMENT
   ? "development"
-  : `revamp-production_${Math.random()
+  : `realm-production_${Math.random()
       .toString(36)
       .substring(2, 13)}+${date.getFullYear()}${String(
       date.getMonth() + 1
@@ -62,7 +62,7 @@ const nextConfig: NextConfig = {
 
   generateBuildId: async () => {
     if (DEVELOPMENT) return "development";
-    console.log("🚀", "REVAMP.RD, Scribble the plans, spill the thoughts.");
+    console.log("🚀", "REALM.RD, Scribble the plans, spill the thoughts.");
     console.log(
       "➔",
       `Copyright (C) ${

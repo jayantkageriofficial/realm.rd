@@ -99,13 +99,13 @@ export default function Home() {
       <section id="home" className="min-h-screen mt-20">
         <div className="m-4 md:flex md:justify-center md:items-center">
           <div className="md:w-1/2 px-4 mb-4 md:mb-0">
-            <h1 className="mt-4 text-3xl font-bold text-purple-600">
-              REVAMP
-              <span className="text-blue-700">.RD</span>
+            <h1 className="mt-4 text-3xl font-bold text-yellow-500 uppercase">
+              REALM
+              <span className="text-red-600">.RD</span>
             </h1>
             <div className="text-gray-300 md:text-lg italic font-normal">
               Scribble the plans,{" "}
-              <span className="text-red-500 underline font-bold">spill</span>{" "}
+              <span className="text-blue-500 underline font-bold">spill</span>{" "}
               the thoughts.
             </div>
           </div>

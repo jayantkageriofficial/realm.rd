@@ -11,8 +11,8 @@ interface PowerShellResult {
   stderr: string;
 }
 
-const APP_DATA_DIR = path.join(os.homedir(), "AppData", "Local", "revamp");
-const TEMP_DATA_DIR = path.join(os.tmpdir(), "revamp");
+const APP_DATA_DIR = path.join(os.homedir(), "AppData", "Local", "realm");
+const TEMP_DATA_DIR = path.join(os.tmpdir(), "realm");
 const KEY_PATH = path.join(APP_DATA_DIR, "cipher_key.bin");
 const IV_PATH = path.join(APP_DATA_DIR, "cipher_iv.bin");
 
