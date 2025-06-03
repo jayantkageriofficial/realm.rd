@@ -45,12 +45,12 @@ export default function Notes(props: { total: number; init: Notes[] }) {
 
       <hr className="mt-3 mb-8 border-gray-700" />
 
-      <div className="md:flex md:grid-cols-2 md:space-x-2 space-y-2">
+      <div className="grid md:grid-cols-2 gap-4">
         {info.notes.map((note) => (
           <Link
             key={note.id}
             href={`/notes/${note.id}`}
-            className="w-full h-36 md:h-48 px-8 py-4 rounded-lg shadow-md border-2 border-secondary hover:border-blue-700 transition-all transform-border"
+            className="w-full h-48 md:h-52 px-8 py-4 rounded-lg shadow-md border-2 border-secondary hover:border-blue-700 transition-all transform-border overflow-hidden"
           >
             <div className="flex items-center justify-between">
               <span className="text-sm font-light text-gray-200">
