@@ -20,6 +20,7 @@ async function verify(): Promise<boolean> {
   const session = JSON.parse(cookie.value);
   const auth = await verifyToken(session.token, ip || "");
   if (auth?.username) return true;
+  cookieStore.delete("session");
   return false;
 }
 

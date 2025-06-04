@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import "@/app/globals.css";
 import "@mdxeditor/editor/style.css";
+import { Toaster } from "react-hot-toast";
 import Navbar from "@/components/misc/Navbar";
 import Footer from "@/components/misc/Footer";
-import Shortcut from "@/components/misc/Shortcut";
-import { Toaster } from "react-hot-toast";
+import Utils from "@/components/misc/Utils";
 import logo from "@/assets/logo.svg";
 
 export const metadata: Metadata = {
@@ -51,7 +51,7 @@ export default function RootLayout({
         <Navbar />
         {children}
         <Footer />
-        <Shortcut />
+        <Utils />
       </body>
     </html>
   );

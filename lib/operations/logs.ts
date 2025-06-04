@@ -8,13 +8,15 @@ export async function log(
   date: Date
 ): Promise<boolean> {
   const msg = `
-$${category.toUpperCase()}
+$REALM $${category.toUpperCase()}
 
 ${message}
 
 Host: ${Config.DOMAIN}
 IP Address: \`${ip}\` (ipinfo.io/${ip})
 Timestamp: ${getDate(date)}
+
+__realm.rd__
     `;
   const req = await fetch(
     `https://api.telegram.org/bot${Config.TG_BOT_TOKEN}/sendMessage`,
