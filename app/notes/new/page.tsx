@@ -9,11 +9,15 @@ import { createNote } from "@/lib/actions/notes";
 import { plugins } from "@/components/misc/Editor";
 
 export default function Home() {
-  const date = new Date();
-  const init = `# ${date.getFullYear()}-${String(date.getMonth() + 1).padStart(
-    2,
-    "0"
-  )}-${String(date.getDate()).padStart(2, "0")}`;
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  })
+    .format(new Date())
+    .replace(/\//g, "-");
+  const init = `# ${today}`;
   const editor = React.useRef<MDXEditorMethods>(null);
 
   const [info, setInfo] = React.useState<{

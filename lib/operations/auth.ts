@@ -7,6 +7,7 @@ import {
   TokenSchema,
   MiscSchema,
 } from "@/lib/database/schema";
+import { log } from "@/lib/operations/logs";
 import { closeAllConnections } from "@/lib/database/connection";
 
 export interface JwtPayload {
@@ -26,6 +27,27 @@ export interface JwtPayload {
 export interface JwtToken {
   username: string;
   timestamp: Date;
+}
+
+export function getDate(date?: Date) {
+  const now = date || new Date();
+  const datePart = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+
+  const timePart = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    hour12: false,
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(now);
+
+  const ms = now.getMilliseconds().toString().padStart(3, "0");
+  return `${datePart}T${timePart}.${ms}+05:30`;
 }
 
 const generateChecksum = async (data: JwtPayload): Promise<string> => {
@@ -64,7 +86,7 @@ async function token({
     ip,
     username: user.username,
     name: user.name,
-    signed: new Date().toISOString(),
+    signed: getDate(),
     buildId: process.env.BUILD_ID,
   };
 
@@ -124,7 +146,7 @@ export async function verify(
 
     const signed = new Date(payload.signed); // get signed date
     if (
-      new Date().valueOf() - signed.valueOf() >
+      new Date().valueOf() - new Date(signed).valueOf() >
       60000 * Config.SESSION_DURATION
     )
       return null;
@@ -185,11 +207,23 @@ export async function login(
       blocked: true,
     }).save();
     await closeAllConnections();
+    await log(
+      "lock",
+      `The application has been locked as per the request of the user ${user.username}`,
+      ip,
+      new Date()
+    );
     return "locked";
   }
   if (!check) return null;
 
   const genToken = await token({ user, ip });
+  await log(
+    "login",
+    `The user ${user.username} has signed in to the application`,
+    ip,
+    new Date()
+  );
 
   return {
     token: genToken,
@@ -240,7 +274,7 @@ export async function register(
     password: pass,
     blockPassword: blockPass,
     name,
-    lastPasswordChange: new Date(),
+    lastPasswordChange: getDate(),
   }).save();
 
   return {
@@ -277,11 +311,18 @@ export async function changePassword(
     await bcrypt.genSalt(Config.SALT_ROUNDS)
   );
 
+  await log(
+    "password",
+    `The user ${user.username} has changed the __**login password**__`,
+    ip,
+    new Date()
+  );
+
   user = await UserSchema.findOneAndUpdate(
     { username: username.toLowerCase() },
     {
       password: pass,
-      lastPasswordChange: new Date(),
+      lastPasswordChange: getDate(),
     }
   );
 
@@ -298,7 +339,8 @@ export async function changePassword(
 export async function changeLockPassword(
   username: string,
   oldpassword: string,
-  newpassword: string
+  newpassword: string,
+  ip: string
 ): Promise<boolean | null> {
   if (newpassword.length < 8) return null;
   const user = await UserSchema.findOne({
@@ -317,6 +359,13 @@ export async function changeLockPassword(
     {
       blockPassword: pass,
     }
+  );
+
+  await log(
+    "password",
+    `The user ${user.username} has changed the __**application lock password**__`,
+    ip,
+    new Date()
   );
 
   return true;

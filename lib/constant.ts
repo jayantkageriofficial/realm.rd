@@ -28,4 +28,7 @@ export default class Config {
 
   public static readonly MONGODB_URI: string =
     process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/";
+
+  public static readonly TG_BOT_TOKEN: string = process.env.TG_BOT_TOKEN || "";
+  public static readonly TG_CHAT_ID: string = process.env.TG_CHAT_ID || "";
 }

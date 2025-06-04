@@ -43,6 +43,7 @@ export async function ChangeLockPassword(
   newPwd: string
 ): Promise<boolean | null> {
   const user: User = (await verify()) as User;
-  const res = await changeLockPassword(user.username, old, newPwd);
+  const ip = getClientIp(await headers());
+  const res = await changeLockPassword(user.username, old, newPwd, ip || "");
   return res;
 }
