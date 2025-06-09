@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const DEVELOPMENT = process.env.NODE_ENV !== "production";
+
 const DOMAIN_SCHEMA = DEVELOPMENT
-  ? "http://localhost:3000"
-  : process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000";
+  ? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
+  : process.env.NEXT_PUBLIC_DOMAIN;
 const date = new Date();
 const BUILD_ID = DEVELOPMENT
   ? "development"

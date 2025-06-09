@@ -156,3 +156,5 @@ export default function EditPage(props: {
     </div>
   );
 }
+
+export const dynamic = "force-dynamic";
