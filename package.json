@@ -10,31 +10,31 @@
   },
   "dependencies": {
     "@codemirror/theme-one-dark": "^6.1.2",
-    "@mdxeditor/editor": "^3.32.3",
+    "@mdxeditor/editor": "^3.35.1",
     "@radix-ui/colors": "^3.0.0",
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "libsodium-wrappers": "^0.7.15",
-    "mongoose": "^8.14.1",
-    "next": "^15.4.0-canary.75",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "mongoose": "^8.15.1",
+    "next": "15.4.0-canary.79",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
     "react-hot-toast": "^2.5.2",
     "react-use": "^17.6.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3",
-    "@tailwindcss/postcss": "^4",
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.1.10",
     "@tailwindcss/typography": "^0.5.16",
     "@types/jsonwebtoken": "^9.0.9",
     "@types/libsodium-wrappers": "^0.7.14",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
+    "@types/node": "^20.19.0",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "eslint": "^9.28.0",
     "eslint-config-next": "15.3.1",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "tailwindcss": "^4.1.10",
+    "typescript": "^5.8.3"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "pnpm@10.12.1+sha512.f0dda8580f0ee9481c5c79a1d927b9164f2c478e90992ad268bbb2465a736984391d6333d2c327913578b2804af33474ca554ba29c04a8b13060a717675ae3ac"
 }

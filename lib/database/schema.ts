@@ -30,15 +30,6 @@ interface Page {
   timestamp?: Date;
 }
 
-interface Todo {
-  id: string;
-  title: string;
-  content: string;
-  completion: Date;
-  user: User;
-  timestamp?: Date;
-}
-
 interface Notes {
   id: string;
   title: string;
@@ -127,34 +118,6 @@ const DBPageSchema = new Schema<Page>({
   },
 });
 
-const DBTodoSchema = new Schema<Todo>({
-  id: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  title: {
-    type: String,
-    required: true,
-  },
-  content: {
-    type: String,
-    required: true,
-  },
-  completion: {
-    type: Date,
-    default: Date.now,
-  },
-  user: {
-    type: Object,
-    required: true,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
 const DBNotesSchema = new Schema<Notes>({
   id: {
     type: String,
@@ -184,16 +147,8 @@ const UserSchema = models.Users || model("Users", DBUserSchema);
 const TokenSchema = models.Tokens || model("Tokens", DBTokenSchema);
 const MiscSchema = models.Misc || model("Misc", DBMiscSchema);
 const PageSchema = models.Page || model("Page", DBPageSchema);
-const TodoSchema = models.Todo || model("Todo", DBTodoSchema);
 const NotesSchema = models.Notes || model("Notes", DBNotesSchema);
 
-export {
-  UserSchema,
-  TokenSchema,
-  MiscSchema,
-  PageSchema,
-  TodoSchema,
-  NotesSchema,
-};
+export { UserSchema, TokenSchema, MiscSchema, PageSchema, NotesSchema };
 
-export type { User, Page, Misc, Todo, Notes };
+export type { User, Page, Misc, Notes };
