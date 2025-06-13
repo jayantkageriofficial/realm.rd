@@ -45,8 +45,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
         </div>
         <div className="flex justify-end mx-4 mt-2 mb-4">
           <span className="text-gray-100 italic">
-            - {note.user.name}
-            <br />
             <span className="text-gray-600">
               {new Date(note.timestamp).toLocaleString()}
             </span>

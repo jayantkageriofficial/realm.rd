@@ -48,8 +48,6 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
             {new Date(page.date).toLocaleDateString()}
           </span>
           <span className="text-gray-100 italic">
-            - {page.user.name}
-            <br />
             <span className="text-gray-600">
               {new Date(page.timestamp).toLocaleString()}
             </span>

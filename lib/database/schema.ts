@@ -3,7 +3,6 @@ import Config from "@/lib/constant";
 
 // Interfaces
 interface User {
-  name: string;
   username: string;
   password?: string;
   blockPassword?: string;
@@ -39,10 +38,6 @@ interface Notes {
 }
 
 const DBUserSchema = new Schema<User>({
-  name: {
-    type: String,
-    required: true,
-  },
   username: {
     type: String,
     unique: true,

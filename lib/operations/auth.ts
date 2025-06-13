@@ -12,7 +12,6 @@ import { closeAllConnections } from "@/lib/database/connection";
 
 export interface JwtPayload {
   username: string;
-  name: string;
   signed: string;
 
   ip: string;
@@ -50,19 +49,9 @@ export function getDate(date?: Date) {
   return `${datePart}T${timePart}.${ms}+05:30`;
 }
 
-const generateChecksum = async (data: JwtPayload): Promise<string> => {
+export const hashString = async (username: string): Promise<string> => {
   const encoder = new TextEncoder();
-  const message = JSON.stringify({
-    domain: Config.DOMAIN,
-    username: data.username,
-    name: data.name,
-    signed: data.signed,
-    ip: data.ip,
-    buildId: data.buildId,
-    iss: Config.JWT_ISSUER,
-  });
-  const payload = encoder.encode(message);
-
+  const payload = encoder.encode(username);
   const hashBuffer = await crypto.subtle.digest("SHA-256", payload);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray
@@ -70,6 +59,18 @@ const generateChecksum = async (data: JwtPayload): Promise<string> => {
     .join("");
 
   return hashHex;
+};
+
+const generateChecksum = async (data: JwtPayload): Promise<string> => {
+  const message = JSON.stringify({
+    domain: Config.DOMAIN,
+    username: data.username,
+    signed: data.signed,
+    ip: data.ip,
+    buildId: data.buildId,
+    iss: Config.JWT_ISSUER,
+  });
+  return await hashString(message);
 };
 
 const verifyChecksum = async (data: JwtPayload, checksum: string) =>
@@ -85,7 +86,6 @@ async function token({
   const opt: JwtPayload = {
     ip,
     username: user.username,
-    name: user.name,
     signed: getDate(),
     buildId: process.env.BUILD_ID,
   };
@@ -169,7 +169,6 @@ export async function verify(
 
     return {
       ip: payload.ip,
-      name: payload.name,
       username: payload.username,
       signed: payload.signed,
     };
@@ -188,15 +187,17 @@ export async function login(
   | {
       token: string;
       user: {
-        name: string;
         username: string;
         timestamp?: Date;
       };
     }
 > {
+  const name = await hashString(username);
+
   const user: User | null = await UserSchema.findOne({
-    username: username.toLowerCase(),
+    username: name,
   });
+  console.log(name, await UserSchema.find({}));
   if (!user) return null;
 
   const check = await bcrypt.compare(password, user.password || "");
@@ -220,7 +221,7 @@ export async function login(
   const genToken = await token({ user, ip });
   await log(
     "login",
-    `The user ${user.username} has signed in to the application`,
+    `The user ${username.toLowerCase()} has signed in to the application`,
     ip,
     new Date()
   );
@@ -228,8 +229,7 @@ export async function login(
   return {
     token: genToken,
     user: {
-      name: user.name,
-      username: user.username,
+      username: username.toLowerCase(),
       timestamp: user.timestamp,
     },
   };
@@ -250,12 +250,15 @@ export async function register(
   name: string
 ): Promise<null | {
   user: {
-    name: string;
     username: string;
     timestamp?: Date;
   };
 }> {
-  if (await UserSchema.findOne({ username: username.toLowerCase() }))
+  if (
+    await UserSchema.findOne({
+      username: await hashString(username.toLowerCase()),
+    })
+  )
     return null;
 
   const password = Math.floor(Math.random() * 1e12).toString();
@@ -270,7 +273,7 @@ export async function register(
   );
 
   const newUser = await new UserSchema({
-    username: username.toLowerCase(),
+    username: await hashString(username.toLowerCase()),
     password: pass,
     blockPassword: blockPass,
     name,
@@ -279,8 +282,7 @@ export async function register(
 
   return {
     user: {
-      name: newUser.name,
-      username: newUser.username,
+      username: username.toLowerCase(),
       timestamp: newUser.timestamp,
     },
   };
@@ -294,14 +296,13 @@ export async function changePassword(
 ): Promise<{
   token: string;
   user: {
-    name: string;
     username: string;
     timestamp?: Date;
   };
 } | null> {
   if (newpassword.length < 8) return null;
   let user = await UserSchema.findOne({
-    username: username.toLowerCase(),
+    username: await hashString(username.toLowerCase()),
   });
   if (!user) return null;
   const check = await bcrypt.compare(oldpassword, user.password || "");
@@ -313,7 +314,7 @@ export async function changePassword(
 
   await log(
     "password",
-    `The user ${user.username} has changed the __**login password**__`,
+    `The user ${username.toLowerCase()} has changed the __**login password**__`,
     ip,
     new Date()
   );
@@ -329,8 +330,7 @@ export async function changePassword(
   return {
     token: await token({ user, ip }),
     user: {
-      name: user.name,
-      username: user.username,
+      username: username.toLowerCase(),
       timestamp: user.timestamp,
     },
   };
@@ -344,7 +344,7 @@ export async function changeLockPassword(
 ): Promise<boolean | null> {
   if (newpassword.length < 8) return null;
   const user = await UserSchema.findOne({
-    username: username.toLowerCase(),
+    username: await hashString(username.toLowerCase()),
   });
   if (!user) return null;
   const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
@@ -355,7 +355,7 @@ export async function changeLockPassword(
   );
 
   await UserSchema.findOneAndUpdate(
-    { username: username.toLowerCase() },
+    { username: await hashString(username.toLowerCase()) },
     {
       blockPassword: pass,
     }
@@ -363,7 +363,7 @@ export async function changeLockPassword(
 
   await log(
     "password",
-    `The user ${user.username} has changed the __**application lock password**__`,
+    `The user ${username.toLowerCase()} has changed the __**application lock password**__`,
     ip,
     new Date()
   );
@@ -376,9 +376,15 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function deleteUser(username: string): Promise<boolean> {
-  if (!(await UserSchema.findOne({ username: username.toLowerCase() })))
+  if (
+    !(await UserSchema.findOne({
+      username: await hashString(username.toLowerCase()),
+    }))
+  )
     return false;
   return Boolean(
-    await UserSchema.findOneAndDelete({ username: username.toLowerCase() })
+    await UserSchema.findOneAndDelete({
+      username: await hashString(username.toLowerCase()),
+    })
   );
 }
