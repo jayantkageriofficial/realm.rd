@@ -9,8 +9,7 @@ export default async function Verify() {
   const ip = getClientIp(await headers());
   const cookie = cookieStore.get("session");
   if (!cookie?.value) return false;
-  const session = JSON.parse(cookie.value);
-  const auth = await verify(session.token, ip as string);
+  const auth = await verify(cookie.value, ip as string);
   if (!auth?.username) return null;
   return auth;
 }

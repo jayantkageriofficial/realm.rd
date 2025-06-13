@@ -44,11 +44,6 @@ export default function Login(props: {
       setInfo({ ...info, loading: false });
       return toast.error("Invalid Credentials", { id });
     }
-    const session = JSON.parse(res);
-    if (!session.token) {
-      setInfo({ ...info, loading: false });
-      return toast.error("Invalid Credentials", { id });
-    }
     toast.success("Logged In", { id });
     setInfo({ username: "", password: "", loading: false });
     return redirect(path || "/");

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
 import { cookies, headers } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 import Config from "@/lib/constant";
 import { getClientIp } from "@/lib/operations/ip";
-import { verify as verifyToken } from "@/lib/operations/auth";
 import { isConnected } from "@/lib/database/connection";
+import { verify as verifyToken } from "@/lib/operations/auth";
 
 export const config = {
   matcher: [
@@ -17,8 +17,7 @@ async function verify(): Promise<boolean> {
   const cookie = cookieStore.get("session");
   const ip = getClientIp(await headers());
   if (!cookie?.value) return false;
-  const session = JSON.parse(cookie.value);
-  const auth = await verifyToken(session.token, ip || "");
+  const auth = await verifyToken(cookie.value, ip || "");
   if (auth?.username) return true;
   cookieStore.delete("session");
   return false;

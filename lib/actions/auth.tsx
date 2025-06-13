@@ -19,8 +19,8 @@ export async function Login(
   const auth = await login(username, password, ip as string);
   if (!auth) return null;
   if (auth == "locked") return "locked";
-  cookieStore.set("session", JSON.stringify(auth));
-  return JSON.stringify(auth);
+  cookieStore.set("session", auth);
+  return auth;
 }
 
 export async function ChangePassword(
@@ -32,8 +32,8 @@ export async function ChangePassword(
   const ip = getClientIp(await headers());
   const res = await changePassword(user.username, old, newPwd, ip || "");
   if (res) {
-    cookieStore.set("session", JSON.stringify(res));
-    return JSON.stringify(res);
+    cookieStore.set("session", res);
+    return res;
   }
   return null;
 }

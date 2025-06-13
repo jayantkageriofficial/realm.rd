@@ -62,19 +62,23 @@ export const hashString = async (username: string): Promise<string> => {
 };
 
 const generateChecksum = async (data: JwtPayload): Promise<string> => {
-  const message = JSON.stringify({
-    domain: Config.DOMAIN,
-    username: data.username,
-    signed: data.signed,
-    ip: data.ip,
-    buildId: data.buildId,
-    iss: Config.JWT_ISSUER,
-  });
-  return await hashString(message);
+  return await hashString(
+    JSON.stringify({
+      key: `${Config.TG_CHAT_ID}*${data.buildId}+${Config.CIPHER_ALGORITHM}`,
+      domain: Config.DOMAIN,
+      username: data.username,
+      signed: data.signed,
+      ip: data.ip,
+      buildId: data.buildId,
+      iss: Config.JWT_ISSUER,
+    })
+  );
 };
 
-const verifyChecksum = async (data: JwtPayload, checksum: string) =>
-  checksum === (await generateChecksum(data));
+const verifyChecksum = async (
+  data: JwtPayload,
+  checksum: string
+): Promise<boolean> => checksum === (await generateChecksum(data));
 
 async function token({
   user,
@@ -181,23 +185,10 @@ export async function login(
   username: string,
   password: string,
   ip: string
-): Promise<
-  | null
-  | "locked"
-  | {
-      token: string;
-      user: {
-        username: string;
-        timestamp?: Date;
-      };
-    }
-> {
-  const name = await hashString(username);
-
+): Promise<null | "locked" | string> {
   const user: User | null = await UserSchema.findOne({
-    username: name,
+    username: await hashString(username.toLowerCase()),
   });
-  console.log(name, await UserSchema.find({}));
   if (!user) return null;
 
   const check = await bcrypt.compare(password, user.password || "");
@@ -226,13 +217,7 @@ export async function login(
     new Date()
   );
 
-  return {
-    token: genToken,
-    user: {
-      username: username.toLowerCase(),
-      timestamp: user.timestamp,
-    },
-  };
+  return genToken;
 }
 
 export async function logout(
@@ -293,13 +278,7 @@ export async function changePassword(
   oldpassword: string,
   newpassword: string,
   ip: string
-): Promise<{
-  token: string;
-  user: {
-    username: string;
-    timestamp?: Date;
-  };
-} | null> {
+): Promise<string | null> {
   if (newpassword.length < 8) return null;
   let user = await UserSchema.findOne({
     username: await hashString(username.toLowerCase()),
@@ -327,13 +306,7 @@ export async function changePassword(
     }
   );
 
-  return {
-    token: await token({ user, ip }),
-    user: {
-      username: username.toLowerCase(),
-      timestamp: user.timestamp,
-    },
-  };
+  return await token({ user, ip });
 }
 
 export async function changeLockPassword(
