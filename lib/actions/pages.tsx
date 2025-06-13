@@ -18,7 +18,6 @@
 
 "use server";
 
-import { customAlphabet } from "nanoid";
 import { create, get, edit, dlt, getAll } from "@/lib/operations/page";
 import verify from "@/lib/actions/verify";
 import { type User } from "@/lib/database/schema";
@@ -29,13 +28,7 @@ export async function createPage(
   date: Date
 ): Promise<string> {
   const user = await verify();
-  const page = await create(
-    customAlphabet("1234567890abcdef", 9)(),
-    title,
-    context,
-    date,
-    user as User
-  );
+  const page = await create(title, context, date, user as User);
   return page.id;
 }
 

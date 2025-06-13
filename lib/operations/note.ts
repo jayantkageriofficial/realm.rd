@@ -16,19 +16,15 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import { customAlphabet } from "nanoid";
 import { NotesSchema, type User, type Notes } from "@/lib/database/schema";
 import { encryptData, decryptData } from "@/lib/operations/encryption";
 
-export async function create(
-  id: string,
-  title: string,
-  content: string,
-  user: User
-) {
+export async function create(title: string, content: string, user: User) {
   const name = await encryptData(title);
   const encrypted = await encryptData(content);
   const page = await NotesSchema.create({
-    id,
+    id: customAlphabet("1234567890abcdef", 9)(),
     title: name,
     content: encrypted,
     user,

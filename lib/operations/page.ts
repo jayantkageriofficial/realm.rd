@@ -16,11 +16,11 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import { customAlphabet } from "nanoid";
 import { PageSchema, type User, type Page } from "@/lib/database/schema";
 import { encryptData, decryptData } from "@/lib/operations/encryption";
 
 export async function create(
-  id: string,
   title: string,
   content: string,
   date: Date,
@@ -29,7 +29,7 @@ export async function create(
   const name = await encryptData(title);
   const encrypted = await encryptData(content);
   const page = await PageSchema.create({
-    id,
+    id: customAlphabet("1234567890abcdef", 9)(),
     title: name,
     content: encrypted,
     date,
