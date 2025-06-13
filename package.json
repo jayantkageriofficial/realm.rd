@@ -23,6 +23,7 @@
     "jsonwebtoken": "^9.0.2",
     "libsodium-wrappers": "^0.7.15",
     "mongoose": "^8.15.1",
+    "nanoid": "^5.1.5",
     "next": "15.4.0-canary.81",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
