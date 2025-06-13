@@ -1,5 +1,12 @@
 {
-  "name": "realm-rd",
+  "name": "realm.rd",
+  "description": "Scribble the plans, spill the thoughts.",
+  "author": {
+    "name": "Jayant Hegde Kageri",
+    "email": "jayantkageri@gmail.com",
+    "url": "https://jayantkageri.in"
+  },
+  "license": "AGPL-3.0-or-later",
   "version": "0.1.0",
   "private": true,
   "scripts": {
