@@ -17,6 +17,7 @@
 */
 
 import React from "react";
+import type { Metadata } from "next";
 
 export default function NotFound() {
   return (
@@ -50,4 +51,10 @@ export default function NotFound() {
       </section>
     </>
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Application Locked",
+  };
 }

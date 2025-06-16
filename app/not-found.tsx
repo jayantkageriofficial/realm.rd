@@ -18,6 +18,7 @@
 
 import React from "react";
 import Link from "next/link";
+import type { Metadata } from "next";
 
 export default function NotFound() {
   return (
@@ -75,4 +76,10 @@ export default function NotFound() {
       </section>
     </>
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "404 - Not Found",
+  };
 }

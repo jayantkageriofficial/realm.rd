@@ -30,20 +30,13 @@ import { closeAllConnections } from "@/lib/database/connection";
 
 export interface JwtPayload {
   username: string;
-  signed: string;
 
-  ip: string;
-  agent?: string;
+  ip?: string;
   buildId?: string;
-  checksum?: string;
 
   iss?: string;
   sub?: string;
-}
-
-export interface JwtToken {
-  username: string;
-  timestamp: Date;
+  iat?: number;
 }
 
 export function getDate(date?: Date) {
@@ -85,7 +78,6 @@ const generateChecksum = async (data: JwtPayload): Promise<string> => {
       key: `${Config.TG_CHAT_ID}*${data.buildId}+${Config.CIPHER_ALGORITHM}`,
       domain: Config.DOMAIN,
       username: data.username,
-      signed: data.signed,
       ip: data.ip,
       buildId: data.buildId,
       iss: Config.JWT_ISSUER,
@@ -106,10 +98,7 @@ async function token({
   ip: string;
 }): Promise<string> {
   const opt: JwtPayload = {
-    ip,
     username: user.username,
-    signed: getDate(),
-    buildId: process.env.BUILD_ID,
   };
 
   const gen = jwt.sign(opt, Config.JWT_SECRET, {
@@ -118,7 +107,11 @@ async function token({
     header: {
       alg: Config.JWT_ALGORITHM,
       ...{
-        checksum: await generateChecksum(opt),
+        checksum: await generateChecksum({
+          ip,
+          buildId: process.env.BUILD_ID,
+          ...opt,
+        }),
       },
     },
     issuer: Config.JWT_ISSUER,
@@ -158,17 +151,20 @@ export async function verify(
     };
 
     if (
-      payload.ip !== ip ||
       payload.iss !== Config.JWT_ISSUER ||
       payload.sub !== Config.DOMAIN ||
       header?.alg !== Config.JWT_ALGORITHM ||
-      !(await verifyChecksum(payload, header?.checksum))
+      !(await verifyChecksum(
+        { ip, buildId: process.env.BUILD_ID, ...payload },
+        header?.checksum
+      ))
     )
       return null;
 
-    const signed = new Date(payload.signed); // get signed date
+    const signed = new Date((payload.iat as number) * 1000 || ""); // get signed date
+
     if (
-      new Date().valueOf() - new Date(signed).valueOf() >
+      new Date().valueOf() - signed.valueOf() >
       60000 * Config.SESSION_DURATION
     )
       return null;
@@ -192,7 +188,6 @@ export async function verify(
     return {
       ip: payload.ip,
       username: payload.username,
-      signed: payload.signed,
     };
   } catch {
     return null;

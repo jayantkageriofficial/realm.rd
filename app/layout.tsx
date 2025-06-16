@@ -26,7 +26,7 @@ import Utils from "@/components/misc/Utils";
 import logo from "@/assets/logo.svg";
 
 export const metadata: Metadata = {
-  title: "realm.rd",
+  title: { default: "realm.rd", template: "%s | realm.rd" },
   description: "Scribble the plans, spill the thoughts.",
   icons: logo.src,
 };

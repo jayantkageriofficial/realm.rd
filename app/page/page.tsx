@@ -19,6 +19,7 @@
 "use server";
 
 import React from "react";
+import type { Metadata } from "next";
 import NotFound from "@/app/not-found";
 import verify from "@/lib/actions/verify";
 import { getAll, getCount } from "@/lib/operations/page";
@@ -37,4 +38,10 @@ export default async function Page() {
       </section>
     </>
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Pages",
+  };
 }

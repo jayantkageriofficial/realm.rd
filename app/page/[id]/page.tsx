@@ -20,6 +20,7 @@
 
 import React from "react";
 import Link from "next/link";
+// import type { Metadata } from "next";
 import NotFound from "@/app/not-found";
 import Dlt from "@/components/pages/dlt";
 import Markdown from "@/components/misc/Markdown";
@@ -78,3 +79,17 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
     </>
   );
 }
+
+// export async function generateMetadata(
+//   params: Promise<{ params: { id: string } }>
+// ): Promise<Metadata> {
+//   const { id } = (await params).params;
+//   const page = await getPage(id);
+
+//   if (page)
+//     return {
+//       title: JSON.parse(page).title,
+//     };
+
+//   return {};
+// }

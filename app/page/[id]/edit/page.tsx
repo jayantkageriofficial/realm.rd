@@ -19,6 +19,7 @@
 "use server";
 
 import React from "react";
+// import type { Metadata } from "next";
 import NotFound from "@/app/not-found";
 import EditPage from "@/components/pages/edit";
 import { getPage } from "@/lib/actions/pages";
@@ -56,3 +57,14 @@ export default async function Edit(props: { params: Promise<{ id: string }> }) {
     </>
   );
 }
+
+// export async function generateMetadata({
+//   params,
+// }: {
+//   params: Promise<{ id: string }> | { id: string };
+// }): Promise<Metadata> {
+//   const resolvedParams = await Promise.resolve(params);
+//   return {
+//     title: `Edit ${resolvedParams.id}`,
+//   };
+// }

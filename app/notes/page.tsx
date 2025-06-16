@@ -19,10 +19,11 @@
 "use server";
 
 import React from "react";
+import type { Metadata } from "next";
 import NotFound from "@/app/not-found";
 import verify from "@/lib/actions/verify";
-import { getAll, getCount } from "@/lib/operations/note";
 import Notes from "@/components/notes/mapper";
+import { getAll, getCount } from "@/lib/operations/note";
 
 export default async function Note() {
   const user = await verify();
@@ -37,4 +38,10 @@ export default async function Note() {
       </section>
     </>
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: "Notes",
+  };
 }
