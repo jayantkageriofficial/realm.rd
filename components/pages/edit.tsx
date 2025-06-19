@@ -75,8 +75,7 @@ export default function EditPage(props: {
       setInfo({ ...info, loading: true });
       if (
         normalizeInput(value || "") == "" ||
-        !info.title ||
-        normalizeInput(info.title) == "" ||
+        normalizeInput(info.title || "") == "" ||
         info.date == "" ||
         !(toDate(today) >= toDate(info.date))
       ) {

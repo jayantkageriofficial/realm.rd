@@ -19,10 +19,27 @@
 "use client";
 
 import React from "react";
+import { redirect } from "next/navigation";
 import { MDXEditor } from "@mdxeditor/editor";
 import { plugins } from "@/components/misc/Editor";
 
-export default function Markdown(props: { content: string }) {
+export default function Markdown(props: {
+  content: string;
+  id?: string;
+  type?: "page" | "note";
+}) {
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key.toLowerCase() === "e") {
+        e.preventDefault();
+        redirect(`/${props.type}/${props.id}/edit`);
+      }
+    };
+    props.type && window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      props.type && window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
   return (
     <>
       <div className="prose prose-invert max-w-none">
