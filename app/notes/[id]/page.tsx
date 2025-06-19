@@ -70,7 +70,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
           </span>
         </div>
         <div>
-          <Markdown content={note.content} id={params.id} type={"note"} />
+          <Markdown content={note.content} id={params.id} type={"notes"} />
         </div>
       </section>
     </>

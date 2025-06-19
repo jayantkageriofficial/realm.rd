@@ -26,7 +26,7 @@ import { plugins } from "@/components/misc/Editor";
 export default function Markdown(props: {
   content: string;
   id?: string;
-  type?: "page" | "note";
+  type?: "page" | "notes";
 }) {
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,11 +35,12 @@ export default function Markdown(props: {
         redirect(`/${props.type}/${props.id}/edit`);
       }
     };
-    props.type && window.addEventListener("keydown", handleKeyDown);
+    if (props.type) window.addEventListener("keydown", handleKeyDown);
     return () => {
-      props.type && window.removeEventListener("keydown", handleKeyDown);
+      if (props.type) window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [props.type, props.id]);
+
   return (
     <>
       <div className="prose prose-invert max-w-none">
