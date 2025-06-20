@@ -18,21 +18,21 @@
 
 "use client";
 
-import React from "react";
 import { redirect } from "next/navigation";
+import React from "react";
 
 export default function Utils() {
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.key.toLowerCase() === "l") {
-        e.preventDefault();
-        redirect("/auth/logout");
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, []);
-  return <></>;
+	React.useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.ctrlKey && e.key.toLowerCase() === "l") {
+				e.preventDefault();
+				redirect("/auth/logout");
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => {
+			window.removeEventListener("keydown", handleKeyDown);
+		};
+	}, []);
+	return <></>;
 }

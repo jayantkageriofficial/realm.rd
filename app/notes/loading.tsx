@@ -16,9 +16,8 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import React from "react";
 import Loading from "@/app/loading";
 
 export default function Load() {
-  return <Loading />;
+	return <Loading />;
 }

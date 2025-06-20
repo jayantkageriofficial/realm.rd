@@ -18,30 +18,29 @@
 
 "use server";
 
-import React from "react";
 import type { Metadata } from "next";
 import NotFound from "@/app/not-found";
+import Pages from "@/components/pages/mapper";
 import verify from "@/lib/actions/verify";
 import { getAll, getCount } from "@/lib/operations/page";
-import Pages from "@/components/pages/mapper";
 
 export default async function Page() {
-  const user = await verify();
-  if (!user) return <NotFound />;
-  const pages = await getAll(user);
-  const count = await getCount(user);
+	const user = await verify();
+	if (!user) return <NotFound />;
+	const pages = await getAll(user);
+	const count = await getCount(user);
 
-  return (
-    <>
-      <section id="pages" className="min-h-screen m-4 mb-8">
-        {pages && <Pages total={count} init={pages} />}
-      </section>
-    </>
-  );
+	return (
+		<>
+			<section id="pages" className="min-h-screen m-4 mb-8">
+				{pages && <Pages total={count} init={pages} />}
+			</section>
+		</>
+	);
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  return {
-    title: "Pages",
-  };
+	return {
+		title: "Pages",
+	};
 }
