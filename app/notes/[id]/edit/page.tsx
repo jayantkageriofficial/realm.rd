@@ -19,14 +19,14 @@
 "use server";
 
 // import type { Metadata } from "next";
-import NotFound from "@/app/not-found";
+import { notFound } from "next/navigation";
 import EditNote from "@/components/notes/edit";
 import { getNote } from "@/lib/actions/notes";
 
 export default async function Edit(props: { params: Promise<{ id: string }> }) {
 	const params = await props.params;
 	const res = await getNote(params.id);
-	if (!res) return <NotFound />;
+	if (!res) return notFound();
 	const note = JSON.parse(res);
 
 	return (

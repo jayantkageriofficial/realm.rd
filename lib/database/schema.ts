@@ -55,6 +55,14 @@ interface Notes {
 	timestamp?: Date;
 }
 
+interface Expenditure {
+	id: string;
+	month: string;
+	content: string;
+	user: User;
+	timestamp?: Date;
+}
+
 const DBUserSchema = new Schema<User>({
 	username: {
 		type: String,
@@ -155,13 +163,45 @@ const DBNotesSchema = new Schema<Notes>({
 	},
 });
 
+const DBExpSchema = new Schema<Expenditure>({
+	id: {
+		type: String,
+		required: true,
+		unique: true,
+	},
+	month: {
+		type: String,
+		required: true,
+	},
+	content: {
+		type: String,
+		required: true,
+	},
+	user: {
+		type: Object,
+		required: true,
+	},
+	timestamp: {
+		type: Date,
+		default: Date.now,
+	},
+});
+
 // Models
 const UserSchema = models.Users || model("Users", DBUserSchema);
 const TokenSchema = models.Tokens || model("Tokens", DBTokenSchema);
 const MiscSchema = models.Misc || model("Misc", DBMiscSchema);
 const PageSchema = models.Page || model("Page", DBPageSchema);
 const NotesSchema = models.Notes || model("Notes", DBNotesSchema);
+const ExpSchema = models.Expenditure || model("Expenditure", DBExpSchema);
 
-export { UserSchema, TokenSchema, MiscSchema, PageSchema, NotesSchema };
+export {
+	UserSchema,
+	TokenSchema,
+	MiscSchema,
+	PageSchema,
+	NotesSchema,
+	ExpSchema,
+};
 
-export type { User, Page, Misc, Notes };
+export type { User, Page, Misc, Notes, Expenditure };

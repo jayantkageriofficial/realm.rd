@@ -19,14 +19,14 @@
 "use server";
 
 import type { Metadata } from "next";
-import NotFound from "@/app/not-found";
+import { notFound } from "next/navigation";
 import Notes from "@/components/notes/mapper";
 import verify from "@/lib/actions/verify";
 import { getAll, getCount } from "@/lib/operations/note";
 
 export default async function Note() {
 	const user = await verify();
-	if (!user) return <NotFound />;
+	if (!user) return notFound();
 	const notes = await getAll(user);
 	const count = await getCount(user);
 

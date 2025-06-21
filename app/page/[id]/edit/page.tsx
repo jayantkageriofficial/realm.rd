@@ -19,14 +19,14 @@
 "use server";
 
 // import type { Metadata } from "next";
-import NotFound from "@/app/not-found";
+import { notFound } from "next/navigation";
 import EditPage from "@/components/pages/edit";
 import { getPage } from "@/lib/actions/pages";
 
 export default async function Edit(props: { params: Promise<{ id: string }> }) {
 	const params = await props.params;
 	const res = await getPage(params.id);
-	if (!res) return <NotFound />;
+	if (!res) return notFound();
 	const page = JSON.parse(res);
 
 	return (

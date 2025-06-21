@@ -36,10 +36,10 @@ export default function Navbar() {
 		path: string;
 		title: string;
 	}[] = [
-		// {
-		//   path: "todo",
-		//   title: "Todo",
-		// },
+		{
+			path: "exp",
+			title: "Expenditure",
+		},
 		{
 			path: "notes",
 			title: "Notes",

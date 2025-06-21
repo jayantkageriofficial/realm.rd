@@ -20,9 +20,9 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import Pages from "@/components/pages/mapper";
+import Months from "@/components/exp/mapper";
 import verify from "@/lib/actions/verify";
-import { getAll, getCount } from "@/lib/operations/page";
+import { getAll, getCount } from "@/lib/operations/exp";
 
 export default async function Page() {
 	const user = await verify();
@@ -33,7 +33,7 @@ export default async function Page() {
 	return (
 		<>
 			<section id="pages" className="min-h-screen m-4 mb-8">
-				{pages && <Pages total={count} init={pages} />}
+				{pages && <Months total={count} init={pages} />}
 			</section>
 		</>
 	);
@@ -41,6 +41,6 @@ export default async function Page() {
 
 export async function generateMetadata(): Promise<Metadata> {
 	return {
-		title: "Pages",
+		title: "Expenditure",
 	};
 }

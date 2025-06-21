@@ -20,7 +20,7 @@
 
 import Link from "next/link";
 // import type { Metadata } from "next";
-import NotFound from "@/app/not-found";
+import { notFound } from "next/navigation";
 import Markdown from "@/components/misc/Markdown";
 import Dlt from "@/components/pages/dlt";
 import { getPage } from "@/lib/actions/pages";
@@ -28,7 +28,7 @@ import { getPage } from "@/lib/actions/pages";
 export default async function Page(props: { params: Promise<{ id: string }> }) {
 	const params = await props.params;
 	const res = await getPage(params.id);
-	if (!res) return <NotFound />;
+	if (!res) return notFound();
 	const page = JSON.parse(res);
 
 	return (
