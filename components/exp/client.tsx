@@ -661,14 +661,6 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		[activeAccount, transactions, saveData, monthName, accounts],
 	);
 
-	const dataWithBalance = useMemo(() => {
-		let runningBalance = 0;
-		return currentAccountData.map((row) => {
-			runningBalance += row.amount;
-			return { ...row, balance: runningBalance };
-		});
-	}, [currentAccountData]);
-
 	const handleExportExcel = useCallback(() => {
 		try {
 			const wb = XLSX.utils.book_new();
@@ -724,26 +716,33 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				"Category",
 				"Balance",
 			];
-			const csvContent = [
-				headers.join(","),
-				...dataWithBalance.map((row) =>
-					[
-						row.date,
-						`"${row.description.replace(/"/g, '""')}"`,
-						row.amount,
-						row.type,
-						row.category,
-						row.balance,
-					].join(","),
-				),
-			].join("\n");
+
+			const sortedData = [...currentAccountData].sort(
+				(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+			);
+
+			let runningBalance = 0;
+			const csvRows = sortedData.map((row) => {
+				runningBalance += row.amount;
+				return [
+					row.date,
+					`"${row.description.replace(/"/g, '""')}"`,
+					row.amount,
+					row.type,
+					row.category,
+					runningBalance,
+				].join(",");
+			});
+
+			const csvContent = [headers.join(","), ...csvRows].join("\n");
 
 			const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `${currentAccount?.name || "account"
-				}-${new Date().toISOString().split("T")[0]}.csv`;
+			a.download = `${
+				currentAccount?.name || "account"
+			}-${new Date().toISOString().split("T")[0]}.csv`;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
@@ -752,7 +751,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		} catch {
 			toast.error("Failed to export CSV");
 		}
-	}, [dataWithBalance, currentAccount]);
+	}, [currentAccountData, currentAccount]);
 
 	const AmountCell = useCallback(
 		({ cell }: { cell: import("mantine-react-table").MRT_Cell<Transaction> }) => {
@@ -777,6 +776,14 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				size: 130,
 				mantineEditTextInputProps: {
 					type: "date",
+				},
+				Cell: ({ cell }) => {
+					const dateString = cell.getValue() as string;
+					if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+						return dateString;
+					}
+					const [year, month, day] = dateString.split("-");
+					return `${day}-${month}-${year}`;
 				},
 			},
 			{
@@ -831,18 +838,33 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				editVariant: "select",
 				mantineEditSelectProps: {
 					data: categories,
+					onKeyDown: (e) => {
+						if (e.key === "Enter") {
+							e.stopPropagation();
+						}
+					},
 				},
 			},
 			{
-				accessorKey: "balance",
+				id: "balance",
 				header: "Balance",
 				size: 140,
 				enableEditing: false,
-				Cell: ({ cell }) => {
-					const value = cell.getValue() as number;
+				Cell: ({ row, table }) => {
+					const sortedRows = table.getSortedRowModel().rows;
+					const currentRowIndex = sortedRows.findIndex(
+						(sortedRow) => sortedRow.id === row.id,
+					);
+					if (currentRowIndex === -1) return null;
+
+					let runningBalance = 0;
+					for (let i = 0; i <= currentRowIndex; i++) {
+						runningBalance += sortedRows[i].original.amount;
+					}
+
 					return (
-						<Text color={value >= 0 ? "green" : "red"} fw={600} size="sm">
-							₹{value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+						<Text color={runningBalance >= 0 ? "green" : "red"} fw={600} size="sm">
+							₹{runningBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
 						</Text>
 					);
 				},
@@ -853,7 +875,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 
 	const table = useMantineReactTable({
 		columns,
-		data: dataWithBalance,
+		data: currentAccountData,
 		enableEditing: true,
 		editDisplayMode: "row",
 		enableRowActions: true,
@@ -865,6 +887,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		getRowId: (row) => row.id.toString(),
 		onEditingRowSave: handleSaveTransaction,
 		mantineTableBodyRowProps: ({ row, table }) => ({
+			onDoubleClick: () => table.setEditingRow(row),
 			sx: {
 				backgroundColor:
 					table.getState().editingRow?.id === row.id
@@ -955,15 +978,13 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		),
 		initialState: {
 			density: "xs",
+			sorting: [{ id: "date", desc: false }],
 		},
 	});
 
 	const currentBalance = useMemo(
-		() =>
-			dataWithBalance.length > 0
-				? dataWithBalance[dataWithBalance.length - 1].balance ?? 0
-				: 0,
-		[dataWithBalance],
+		() => currentAccountData.reduce((sum, row) => sum + row.amount, 0),
+		[currentAccountData],
 	);
 
 	const totalCredits = useMemo(
