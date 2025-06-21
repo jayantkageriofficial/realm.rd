@@ -7,7 +7,6 @@ import {
 	Button,
 	Card,
 	Divider,
-	Grid,
 	Group,
 	MantineProvider,
 	MantineThemeOverride,
@@ -16,6 +15,7 @@ import {
 	NumberInput,
 	Paper,
 	SegmentedControl,
+	SimpleGrid,
 	Stack,
 	Text,
 	TextInput,
@@ -1020,7 +1020,10 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 							</Group>
 						</Group>
 
-						<Grid>
+						<SimpleGrid
+							cols={3}
+							breakpoints={[{ maxWidth: "sm", cols: 1 }]}
+						>
 							{Object.entries(accounts).map(([accountId, account]) => {
 								const accountTransactions = transactions[accountId] || [];
 								const accountBalance = accountTransactions.reduce(
@@ -1029,85 +1032,84 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 								);
 
 								return (
-									<Grid.Col key={accountId} span={4}>
-										<Card
-											p="md"
-											bg={activeAccount === accountId ? "dark.6" : "dark.7"}
-											style={{
-												cursor: "pointer",
-												border:
-													activeAccount === accountId
-														? "2px solid #339af0"
-														: "2px solid transparent",
-											}}
-											onClick={() => setActiveAccount(accountId)}
-										>
-											<Group position="apart" align="flex-start">
-												<Stack spacing="xs">
-													<Group>
-														{account.icon === "cash" ? (
-															<CashIcon size={20} />
-														) : (
-															<BankIcon size={20} />
-														)}
-														<Text fw={600} c="white">
-															{account.name}
-														</Text>
-													</Group>
-													<Text
-														size="xl"
-														fw={700}
-														c={accountBalance >= 0 ? "green" : "red"}
+									<Card
+										key={accountId}
+										p="md"
+										bg={activeAccount === accountId ? "dark.6" : "dark.7"}
+										style={{
+											cursor: "pointer",
+											border:
+												activeAccount === accountId
+													? "2px solid #339af0"
+													: "2px solid transparent",
+										}}
+										onClick={() => setActiveAccount(accountId)}
+									>
+										<Group position="apart" align="flex-start">
+											<Stack spacing="xs">
+												<Group>
+													{account.icon === "cash" ? (
+														<CashIcon size={20} />
+													) : (
+														<BankIcon size={20} />
+													)}
+													<Text fw={600} c="white">
+														{account.name}
+													</Text>
+												</Group>
+												<Text
+													size="xl"
+													fw={700}
+													c={accountBalance >= 0 ? "green" : "red"}
+												>
+													₹
+													{accountBalance.toLocaleString("en-IN", {
+														minimumFractionDigits: 2,
+													})}
+												</Text>
+												<Text size="sm" c="dimmed">
+													{accountTransactions.length} transactions
+												</Text>
+											</Stack>
+											<Menu shadow="md" width={200}>
+												<Menu.Target>
+													<ActionIcon
+														variant="subtle"
+														size="sm"
+														onClick={(e: React.MouseEvent) =>
+															e.stopPropagation()
+														}
 													>
-														₹
-														{accountBalance.toLocaleString("en-IN", {
-															minimumFractionDigits: 2,
-														})}
-													</Text>
-													<Text size="sm" c="dimmed">
-														{accountTransactions.length} transactions
-													</Text>
-												</Stack>
-												<Menu shadow="md" width={200}>
-													<Menu.Target>
-														<ActionIcon
-															variant="subtle"
-															size="sm"
-															onClick={(e: React.MouseEvent) =>
-																e.stopPropagation()
-															}
-														>
-															<DotsVerticalIcon size={16} />
-														</ActionIcon>
-													</Menu.Target>
-													<Menu.Dropdown>
-														<Menu.Item
-															icon={<EditIcon size={14} />}
-															onClick={(e: React.MouseEvent) => {
-																e.stopPropagation();
-																setEditingAccountId(accountId);
-															}}
-														>
-															Edit Account
-														</Menu.Item>
-														<Menu.Item
-															color="red"
-															icon={<TrashIcon size={14} />}
-															onClick={(e: React.MouseEvent) => {
-																e.stopPropagation();
-																setDeletingAccountId(accountId);
-															}}
-														>
-															Delete Account
-														</Menu.Item>
-													</Menu.Dropdown>
-												</Menu>
-											</Group>
-										</Card>
-									</Grid.Col>
+														<DotsVerticalIcon size={16} />
+													</ActionIcon>
+												</Menu.Target>
+												<Menu.Dropdown>
+													<Menu.Item
+														icon={<EditIcon size={14} />}
+														onClick={(e: React.MouseEvent) => {
+															e.stopPropagation();
+															setEditingAccountId(accountId);
+														}}
+													>
+														Edit Account
+													</Menu.Item>
+													<Menu.Item
+														color="red"
+														icon={<TrashIcon size={14} />}
+														onClick={(e: React.MouseEvent) => {
+															e.stopPropagation();
+															setDeletingAccountId(accountId);
+														}}
+													>
+														Delete Account
+													</Menu.Item>
+												</Menu.Dropdown>
+											</Menu>
+										</Group>
+									</Card>
 								);
 							})}
-						</Grid>
+						</SimpleGrid>
 						<Divider my="md" />
 						<Group>
 							<div>
