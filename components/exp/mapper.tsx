@@ -19,28 +19,13 @@
 "use client";
 
 import {
-	ActionIcon,
-	Alert,
-	Badge,
 	Button,
-	Card,
-	Divider,
-	Flex,
-	Grid,
 	Group,
 	MantineProvider,
-	MantineThemeOverride,
-	Menu,
+	type MantineThemeOverride,
 	Modal,
-	NumberInput,
-	Paper,
-	SegmentedControl,
-	Select,
 	Stack,
-	Text,
 	TextInput,
-	Title,
-	Tooltip,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import Link from "next/link";
@@ -142,13 +127,13 @@ export default function ExpComponent(props: {
 					{info.months.length}/{info.total})
 				</h1>
 
-				<div
+				<button
 					className="cursor-pointer"
 					onClick={open}
 					onKeyDown={(e) => {
 						if (e.key === "Enter") open();
 					}}
-					role="button"
+					type="button"
 					tabIndex={0}
 				>
 					<svg
@@ -166,7 +151,7 @@ export default function ExpComponent(props: {
 							d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
 						/>
 					</svg>
-				</div>
+				</button>
 			</div>
 
 			<hr className="mt-3 mb-8 border-gray-700" />

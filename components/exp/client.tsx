@@ -9,7 +9,7 @@ import {
 	Divider,
 	Group,
 	MantineProvider,
-	MantineThemeOverride,
+	type MantineThemeOverride,
 	Menu,
 	Modal,
 	NumberInput,
@@ -27,13 +27,8 @@ import {
 	useMantineReactTable,
 } from "mantine-react-table";
 import { useRouter } from "next/navigation";
-import React, {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-	useState,
-} from "react";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import * as XLSX from "xlsx";
 import { dltMonth, editMonth } from "@/lib/actions/exp";
@@ -48,6 +43,7 @@ const CashIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Cash Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -66,6 +62,7 @@ const BankIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Back Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -84,6 +81,7 @@ const TrashIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Trash Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -102,6 +100,7 @@ const PlusIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Plus Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -120,6 +119,7 @@ const EditIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Edit Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -138,6 +138,7 @@ const DotsVerticalIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Menu Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -156,6 +157,7 @@ const FileExportIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Export Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -174,6 +176,7 @@ const AlertCircleIcon = ({ size = 24, ...props }) => (
 		style={{ width: size, height: size }}
 		{...props}
 	>
+		<title>Close Icon</title>
 		<path
 			strokeLinecap="round"
 			strokeLinejoin="round"
@@ -407,7 +410,7 @@ const DeleteMonthModal = ({
 					Month: <strong>{monthName}</strong>
 				</Text>
 				<Text size="sm">
-					To confirm, please type "ok delete" in the box below.
+					To confirm, please type &quot;ok delete&quot; in the box below.
 				</Text>
 				<TextInput
 					placeholder="ok delete"
@@ -451,7 +454,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		null,
 	);
 	const [isDeleteMonthModalOpen, setDeleteMonthModalOpen] = useState(false);
-	const [monthName, setMonthName] = useState(initialData.monthName);
+	const [monthName] = useState(initialData.monthName);
 	const tableContainerRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
@@ -459,7 +462,10 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		if (firstAccountId) setActiveAccount(firstAccountId);
 	}, [initialData.accounts]);
 
-	const currentAccountData = transactions[activeAccount] || [];
+	const currentAccountData = useMemo(
+		() => transactions[activeAccount] || [],
+		[transactions, activeAccount],
+	);
 	const currentAccount = accounts[activeAccount];
 
 	const saveData = useCallback(
@@ -590,7 +596,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 		}: {
 			values: Transaction;
 			exitEditingMode: () => void;
-			row: any;
+			row: import("mantine-react-table").MRT_Row<Transaction>;
 		}) => {
 			const amount =
 				values.type === "Debit"
@@ -601,10 +607,10 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				(transaction) =>
 					transaction.id === row.original.id
 						? {
-								...transaction,
-								...values,
-								amount,
-							}
+							...transaction,
+							...values,
+							amount,
+						}
 						: transaction,
 			);
 			const updatedTransactions = {
@@ -684,7 +690,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 
 				const ws = XLSX.utils.json_to_sheet(dataForSheet);
 				const sheetName = account.name
-					.replace(/[*?:/\\\[\]]/g, "_")
+					.replace(/[*?:/\\[\]]/g, "_")
 					.substring(0, 31);
 				XLSX.utils.book_append_sheet(wb, ws, sheetName);
 			});
@@ -736,18 +742,32 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `${
-				currentAccount?.name || "account"
-			}-${new Date().toISOString().split("T")[0]}.csv`;
+			a.download = `${currentAccount?.name || "account"
+				}-${new Date().toISOString().split("T")[0]}.csv`;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
 			URL.revokeObjectURL(url);
 			toast.success("CSV exported successfully");
-		} catch (error) {
+		} catch {
 			toast.error("Failed to export CSV");
 		}
 	}, [dataWithBalance, currentAccount]);
+
+	const AmountCell = useCallback(
+		({ cell }: { cell: import("mantine-react-table").MRT_Cell<Transaction> }) => {
+			const value = cell.getValue() as number;
+			return (
+				<Text color={value >= 0 ? "green" : "red"} fw={500} size="sm">
+					₹
+					{Math.abs(value).toLocaleString("en-IN", {
+						minimumFractionDigits: 2,
+					})}
+				</Text>
+			);
+		},
+		[]
+	);
 
 	const columns = useMemo<MRT_ColumnDef<Transaction>[]>(
 		() => [
@@ -771,17 +791,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				accessorKey: "amount",
 				header: "Amount",
 				size: 120,
-				Cell: ({ cell }) => {
-					const value = cell.getValue() as number;
-					return (
-						<Text color={value >= 0 ? "green" : "red"} fw={500} size="sm">
-							₹
-							{Math.abs(value).toLocaleString("en-IN", {
-								minimumFractionDigits: 2,
-							})}
-						</Text>
-					);
-				},
+				Cell: AmountCell,
 				mantineEditTextInputProps: {
 					type: "number",
 					styles: {
@@ -838,7 +848,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				},
 			},
 		],
-		[],
+		[AmountCell],
 	);
 
 	const table = useMantineReactTable({
@@ -951,7 +961,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 	const currentBalance = useMemo(
 		() =>
 			dataWithBalance.length > 0
-				? dataWithBalance[dataWithBalance.length - 1].balance!
+				? dataWithBalance[dataWithBalance.length - 1].balance ?? 0
 				: 0,
 		[dataWithBalance],
 	);
@@ -1020,10 +1030,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 							</Group>
 						</Group>
 
-						<SimpleGrid
-							cols={3}
-							breakpoints={[{ maxWidth: "sm", cols: 1 }]}
-						>
+						<SimpleGrid cols={3} breakpoints={[{ maxWidth: "sm", cols: 1 }]}>
 							{Object.entries(accounts).map(([accountId, account]) => {
 								const accountTransactions = transactions[accountId] || [];
 								const accountBalance = accountTransactions.reduce(

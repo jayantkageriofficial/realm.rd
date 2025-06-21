@@ -24,7 +24,6 @@ import { MiscSchema } from "@/lib/database/schema";
 const start = Date.now();
 
 declare global {
-	// eslint-disable-next-line no-var
 	var mongoose: {
 		conn: mongoose.Connection | null;
 		promise: Promise<mongoose.Connection> | null;

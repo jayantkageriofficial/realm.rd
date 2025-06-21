@@ -13,11 +13,12 @@
 		"indentStyle": "tab"
 	},
 	"linter": {
-		"enabled": false,
+		"enabled": true,
 		"rules": {
 			"recommended": true,
 			"nursery": {
-				"useUniqueElementIds": "off"
+				"useUniqueElementIds": "off",
+				"noNestedComponentDefinitions": "off"
 			}
 		}
 	},
