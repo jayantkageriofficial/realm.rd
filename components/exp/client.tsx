@@ -30,7 +30,7 @@ import { useRouter } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import * as XLSX from "xlsx";
+import { utils, write } from "xlsx";
 import { dltMonth, editMonth } from "@/lib/actions/exp";
 
 const CashIcon = ({ size = 24, ...props }) => (
@@ -663,7 +663,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 
 	const handleExportExcel = useCallback(() => {
 		try {
-			const wb = XLSX.utils.book_new();
+			const wb = utils.book_new();
 
 			Object.entries(accounts).forEach(([accountId, account]) => {
 				const accountTransactions = transactions[accountId] || [];
@@ -680,14 +680,14 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 					};
 				});
 
-				const ws = XLSX.utils.json_to_sheet(dataForSheet);
+				const ws = utils.json_to_sheet(dataForSheet);
 				const sheetName = account.name
-					.replace(/[*?:/\\[\]]/g, "_")
+					.replace(/[*?:/\\\[\]]/g, "_")
 					.substring(0, 31);
-				XLSX.utils.book_append_sheet(wb, ws, sheetName);
+				utils.book_append_sheet(wb, ws, sheetName);
 			});
 
-			const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+			const wbout = write(wb, { bookType: "xlsx", type: "array" });
 			const blob = new Blob([wbout], { type: "application/octet-stream" });
 
 			const url = URL.createObjectURL(blob);
@@ -740,9 +740,8 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 			const url = URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `${
-				currentAccount?.name || "account"
-			}-${new Date().toISOString().split("T")[0]}.csv`;
+			a.download = `${currentAccount?.name || "account"
+				}-${new Date().toISOString().split("T")[0]}.csv`;
 			document.body.appendChild(a);
 			a.click();
 			document.body.removeChild(a);
@@ -817,6 +816,11 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				editVariant: "select",
 				mantineEditSelectProps: {
 					data: ["Credit", "Debit"],
+					onKeyDown: (e) => {
+						if (e.key === "Enter") {
+							e.stopPropagation();
+						}
+					},
 				},
 				Cell: ({ cell }) => {
 					const value = cell.getValue() as string;
