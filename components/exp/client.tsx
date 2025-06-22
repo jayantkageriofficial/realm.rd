@@ -252,6 +252,7 @@ const categories = [
 	"Hospital",
 	"Entertainment",
 	"Shopping",
+	"Travel",
 	"Other",
 	"Initial",
 ];
@@ -700,7 +701,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 
 				const ws = utils.json_to_sheet(dataForSheet);
 				const sheetName = account.name
-					.replace(/[*?:/\\\[\]]/g, "_")
+					.replace(/[*?:/\\[\]]/g, "_")
 					.substring(0, 31);
 				utils.book_append_sheet(wb, ws, sheetName);
 			});
@@ -771,7 +772,11 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 	}, [currentAccountData, currentAccount]);
 
 	const AmountCell = useCallback(
-		({ cell }: { cell: import("mantine-react-table").MRT_Cell<Transaction> }) => {
+		({
+			cell,
+		}: {
+			cell: import("mantine-react-table").MRT_Cell<Transaction>;
+		}) => {
 			const value = cell.getValue() as number;
 			return (
 				<Text color={value >= 0 ? "green" : "red"} fw={500} size="sm">
@@ -782,7 +787,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 				</Text>
 			);
 		},
-		[]
+		[],
 	);
 
 	const columns = useMemo<MRT_ColumnDef<Transaction>[]>(
@@ -885,8 +890,15 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
 					}
 
 					return (
-						<Text color={runningBalance >= 0 ? "green" : "red"} fw={600} size="sm">
-							₹{runningBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+						<Text
+							color={runningBalance >= 0 ? "green" : "red"}
+							fw={600}
+							size="sm"
+						>
+							₹
+							{runningBalance.toLocaleString("en-IN", {
+								minimumFractionDigits: 2,
+							})}
 						</Text>
 					);
 				},

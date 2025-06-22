@@ -30,7 +30,9 @@ interface AppData {
 	transactions: Transactions;
 }
 
-export default async function AccountPage(props: { params: Promise<{ id: string }> }) {
+export default async function AccountPage(props: {
+	params: Promise<{ id: string }>;
+}) {
 	const params = await props.params;
 	const data = await getMonth(params.id);
 
@@ -45,7 +47,7 @@ export default async function AccountPage(props: { params: Promise<{ id: string 
 		accounts: contentData.accounts || {},
 		transactions: contentData.transactions || {},
 		monthName: fullData.month || "Untitled Month",
-		id: params.id
+		id: params.id,
 	};
 
 	return <Client initialData={initialData} />;

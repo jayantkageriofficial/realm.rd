@@ -272,7 +272,7 @@ export async function register(
 	);
 
 	const newUser = await new UserSchema({
-		username: await hashString(username.toLowerCase()),
+		username: (await hashString(username.toLowerCase())).toLowerCase(),
 		password: pass,
 		blockPassword: blockPass,
 		name,
@@ -295,7 +295,7 @@ export async function changePassword(
 ): Promise<string | null> {
 	if (newpassword.length < 8) return null;
 	let user = await UserSchema.findOne({
-		username: await hashString(username.toLowerCase()),
+		username: username.toLowerCase(),
 	});
 	if (!user) return null;
 	const check = await bcrypt.compare(oldpassword, user.password || "");
@@ -312,13 +312,10 @@ export async function changePassword(
 		new Date(),
 	);
 
-	user = await UserSchema.findOneAndUpdate(
-		{ username: username.toLowerCase() },
-		{
-			password: pass,
-			lastPasswordChange: getDate(),
-		},
-	);
+	user = await UserSchema.findByIdAndUpdate(user._id, {
+		password: pass,
+		lastPasswordChange: getDate(),
+	});
 
 	return await token({ user, ip });
 }
@@ -331,7 +328,7 @@ export async function changeLockPassword(
 ): Promise<boolean | null> {
 	if (newpassword.length < 8) return null;
 	const user = await UserSchema.findOne({
-		username: await hashString(username.toLowerCase()),
+		username: username.toLowerCase(),
 	});
 	if (!user) return null;
 	const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
@@ -341,12 +338,7 @@ export async function changeLockPassword(
 		await bcrypt.genSalt(Config.SALT_ROUNDS),
 	);
 
-	await UserSchema.findOneAndUpdate(
-		{ username: await hashString(username.toLowerCase()) },
-		{
-			blockPassword: pass,
-		},
-	);
+	await UserSchema.findByIdAndUpdate(user._id, { blockPassword: pass });
 
 	await log(
 		"password",
