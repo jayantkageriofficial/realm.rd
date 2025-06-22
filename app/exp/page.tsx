@@ -25,22 +25,22 @@ import verify from "@/lib/actions/verify";
 import { getAll, getCount } from "@/lib/operations/exp";
 
 export default async function Page() {
-	const user = await verify();
-	if (!user) return notFound();
-	const pages = await getAll(user);
-	const count = await getCount(user);
+  const user = await verify();
+  if (!user) return notFound();
+  const pages = await getAll(user);
+  const count = await getCount(user);
 
-	return (
-		<>
-			<section id="pages" className="min-h-screen m-4 mb-8">
-				{pages && <Months total={count} init={pages} />}
-			</section>
-		</>
-	);
+  return (
+    <>
+      <section id="pages" className="min-h-screen m-4 mb-8">
+        {pages && <Months total={count} init={pages} />}
+      </section>
+    </>
+  );
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-	return {
-		title: "Expenditure",
-	};
+  return {
+    title: "Expenditure",
+  };
 }

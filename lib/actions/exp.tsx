@@ -23,39 +23,39 @@ import type { User } from "@/lib/database/schema";
 import { create, dlt, edit, get, getAll } from "@/lib/operations/exp";
 
 export async function createMonth(
-	month: string,
-	context: string,
+  month: string,
+  context: string
 ): Promise<string> {
-	const user = await verify();
-	const data = await create(month, context, user as User);
-	return data.id;
+  const user = await verify();
+  const data = await create(month, context, user as User);
+  return data.id;
 }
 
 export async function getMonth(id: string): Promise<string | null> {
-	const user = await verify();
-	const data = await get(id, user as User);
-	if (!data) return null;
-	return JSON.stringify(data);
+  const user = await verify();
+  const data = await get(id, user as User);
+  if (!data) return null;
+  return JSON.stringify(data);
 }
 
 export async function getMonths(page: number) {
-	const user = await verify();
-	const data = await getAll(user as User, page);
-	return JSON.stringify(data);
+  const user = await verify();
+  const data = await getAll(user as User, page);
+  return JSON.stringify(data);
 }
 
 export async function editMonth(
-	id: string,
-	month: string,
-	context: string,
+  id: string,
+  month: string,
+  context: string
 ): Promise<string> {
-	const user = await verify();
-	const data = await edit(id, month, context, user as User);
-	return data?.id || "";
+  const user = await verify();
+  const data = await edit(id, month, context, user as User);
+  return data?.id || "";
 }
 
 export async function dltMonth(id: string): Promise<string | null> {
-	const user = await verify();
-	const note = await dlt(id, user as User);
-	return note?.id || null;
+  const user = await verify();
+  const note = await dlt(id, user as User);
+  return note?.id || null;
 }

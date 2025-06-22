@@ -18,92 +18,92 @@
 
 import { oneDark } from "@codemirror/theme-one-dark";
 import {
-	BoldItalicUnderlineToggles,
-	CodeToggle,
-	CreateLink,
-	codeBlockPlugin,
-	codeMirrorPlugin,
-	DiffSourceToggleWrapper,
-	diffSourcePlugin,
-	headingsPlugin,
-	InsertCodeBlock,
-	InsertImage,
-	imagePlugin,
-	ListsToggle,
-	linkDialogPlugin,
-	linkPlugin,
-	listsPlugin,
-	markdownShortcutPlugin,
-	quotePlugin,
-	type RealmPlugin,
-	Separator,
-	tablePlugin,
-	toolbarPlugin,
+  BoldItalicUnderlineToggles,
+  CodeToggle,
+  CreateLink,
+  codeBlockPlugin,
+  codeMirrorPlugin,
+  DiffSourceToggleWrapper,
+  diffSourcePlugin,
+  headingsPlugin,
+  InsertCodeBlock,
+  InsertImage,
+  imagePlugin,
+  ListsToggle,
+  linkDialogPlugin,
+  linkPlugin,
+  listsPlugin,
+  markdownShortcutPlugin,
+  quotePlugin,
+  type RealmPlugin,
+  Separator,
+  tablePlugin,
+  toolbarPlugin,
 } from "@mdxeditor/editor";
 
 const plugins = (
-	md: string,
-	mode: "rich-text" | "source" | "diff" | "view-only",
+  md: string,
+  mode: "rich-text" | "source" | "diff" | "view-only"
 ) =>
-	[
-		listsPlugin(),
-		quotePlugin(),
-		headingsPlugin(),
-		linkPlugin(),
-		linkDialogPlugin(),
-		imagePlugin({}),
-		tablePlugin(),
-		codeBlockPlugin({ defaultCodeBlockLanguage: "txt" }),
-		codeMirrorPlugin({
-			codeBlockLanguages: {
-				js: "JavaScript",
-				jsx: "JSX",
-				ts: "TypeScript",
-				tsx: "TSX",
-				py: "Python",
-				css: "CSS",
-				html: "HTML",
-				json: "JSON",
-				xml: "XML",
-				md: "Markdown",
-				sql: "SQL",
-				bash: "Bash",
-				sh: "Shell",
-				c: "C",
-				cpp: "C++",
-				java: "Java",
-				php: "PHP",
-				ruby: "Ruby",
-				go: "Go",
-				rust: "Rust",
-				yaml: "YAML",
-				txt: "Text",
-			},
-			codeMirrorExtensions: [oneDark],
-		}),
-		diffSourcePlugin({
-			viewMode: mode === "view-only" ? "rich-text" : mode,
-			diffMarkdown: md,
-		}),
-		markdownShortcutPlugin(),
-		mode !== "view-only" &&
-			toolbarPlugin({
-				toolbarContents: () => (
-					<>
-						<DiffSourceToggleWrapper>
-							<BoldItalicUnderlineToggles />
-							<Separator />
-							<ListsToggle />
-							<Separator />
-							<InsertCodeBlock />
-							<CodeToggle />
-							<Separator />
-							<CreateLink />
-							<InsertImage />
-						</DiffSourceToggleWrapper>
-					</>
-				),
-			}),
-	].filter(Boolean) as RealmPlugin[];
+  [
+    listsPlugin(),
+    quotePlugin(),
+    headingsPlugin(),
+    linkPlugin(),
+    linkDialogPlugin(),
+    imagePlugin({}),
+    tablePlugin(),
+    codeBlockPlugin({ defaultCodeBlockLanguage: "txt" }),
+    codeMirrorPlugin({
+      codeBlockLanguages: {
+        js: "JavaScript",
+        jsx: "JSX",
+        ts: "TypeScript",
+        tsx: "TSX",
+        py: "Python",
+        css: "CSS",
+        html: "HTML",
+        json: "JSON",
+        xml: "XML",
+        md: "Markdown",
+        sql: "SQL",
+        bash: "Bash",
+        sh: "Shell",
+        c: "C",
+        cpp: "C++",
+        java: "Java",
+        php: "PHP",
+        ruby: "Ruby",
+        go: "Go",
+        rust: "Rust",
+        yaml: "YAML",
+        txt: "Text",
+      },
+      codeMirrorExtensions: [oneDark],
+    }),
+    diffSourcePlugin({
+      viewMode: mode === "view-only" ? "rich-text" : mode,
+      diffMarkdown: md,
+    }),
+    markdownShortcutPlugin(),
+    mode !== "view-only" &&
+      toolbarPlugin({
+        toolbarContents: () => (
+          <>
+            <DiffSourceToggleWrapper>
+              <BoldItalicUnderlineToggles />
+              <Separator />
+              <ListsToggle />
+              <Separator />
+              <InsertCodeBlock />
+              <CodeToggle />
+              <Separator />
+              <CreateLink />
+              <InsertImage />
+            </DiffSourceToggleWrapper>
+          </>
+        ),
+      }),
+  ].filter(Boolean) as RealmPlugin[];
 
 export { plugins };
