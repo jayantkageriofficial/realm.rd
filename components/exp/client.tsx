@@ -254,7 +254,6 @@ const categories = [
   "Shopping",
   "Travel",
   "Other",
-  "Initial",
 ];
 
 const AddAccountModal = ({
@@ -524,7 +523,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
         date: firstDay.toISOString().split("T")[0],
         description: "Opening Balance",
         amount: balance,
-        category: "Initial",
+        category: "Credit",
         type: "Credit",
       };
 

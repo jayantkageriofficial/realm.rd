@@ -25,6 +25,7 @@ interface User {
 	password?: string;
 	blockPassword?: string;
 	lastPasswordChange?: Date;
+	checksum?: string
 	timestamp?: Date;
 }
 
@@ -80,6 +81,9 @@ const DBUserSchema = new Schema<User>({
 	lastPasswordChange: {
 		type: Date,
 		required: true,
+	},
+	checksum: {
+		type: String,
 	},
 	timestamp: {
 		type: Date,
@@ -184,7 +188,7 @@ const DBExpSchema = new Schema<Expenditure>({
 	timestamp: {
 		type: Date,
 		default: Date.now,
-	},
+	}
 });
 
 // Models
