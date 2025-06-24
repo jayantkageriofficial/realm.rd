@@ -252,9 +252,9 @@ export async function login(
     await closeAllConnections();
     await log(
       "lock",
-      `The application has been locked as per the request of the user ${
-        user.username
-      } via ${force ? "the lock password" : "the database checksum mismatch"}`,
+      `The application has been locked as per the request of the user  __**${username.toLowerCase()} via ${
+        force ? "the lock password" : "the database checksum mismatch"
+      } **__`,
       ip,
       new Date()
     );
