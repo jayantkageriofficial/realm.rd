@@ -22,30 +22,30 @@ const DEVELOPMENT = process.env.NODE_ENV !== "production";
 
 /** @description Refer README.md */
 const Config = {
-	DOMAIN: DEVELOPMENT
-		? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
-		: process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000", // No trailing slash
+  DOMAIN: DEVELOPMENT
+    ? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
+    : process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000", // No trailing slash
 
-	SALT_ROUNDS: 12,
+  SALT_ROUNDS: 12,
 
-	JWT_SECRET: Buffer.from(
-		`${process.env.BUILD_ID}_${process.env.JWT_SECRET || "JWT_SECRET"}`,
-	).toString("base64"),
+  JWT_SECRET: Buffer.from(
+    `${process.env.BUILD_ID}_${process.env.JWT_SECRET || "JWT_SECRET"}`
+  ).toString("base64"),
 
-	JWT_ALGORITHM: "HS512" as Algorithm,
-	JWT_ISSUER: "https://jayantkageri.in",
+  JWT_ALGORITHM: "HS512" as Algorithm,
+  JWT_ISSUER: "https://jayantkageri.in",
 
-	SESSION_DURATION: parseInt(process.env.SESSION_DURATION || "15"),
+  SESSION_DURATION: parseInt(process.env.SESSION_DURATION || "15"),
 
-	CIPHER_ALGORITHM: "aes-256-cbc",
-	CIPHER_KEY_SIZE: 32,
-	CIPHER_IV_SIZE: 16,
-	CIPHER_ENCODING: "hex" as BufferEncoding,
+  CIPHER_ALGORITHM: "aes-256-cbc",
+  CIPHER_KEY_SIZE: 32,
+  CIPHER_IV_SIZE: 16,
+  CIPHER_ENCODING: "hex" as BufferEncoding,
 
-	MONGODB_URI: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/",
+  MONGODB_URI: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/",
 
-	TG_BOT_TOKEN: process.env.TG_BOT_TOKEN || "",
-	TG_CHAT_ID: process.env.TG_CHAT_ID || "",
+  TG_BOT_TOKEN: process.env.TG_BOT_TOKEN || "",
+  TG_CHAT_ID: process.env.TG_CHAT_ID || "",
 };
 
 export default Config;
