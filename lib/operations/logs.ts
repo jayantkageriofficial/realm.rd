@@ -24,7 +24,7 @@ export async function log(
   message: string,
   ip: string,
   date: Date
-): Promise<boolean> {
+): Promise<boolean | null> {
   const msg = `
 $REALM $${category.toUpperCase()}
 
@@ -36,23 +36,27 @@ Timestamp: ${getDate(date)}
 
 __realm.rd__
     `;
-  const req = await fetch(
-    `https://api.telegram.org/bot${Config.TG_BOT_TOKEN}/sendMessage`,
-    {
-      method: "POST",
-      headers: {
-        "Access-Control-Allow-Origin": "https://api.telegram.org",
-        "Content-Type": "application/json",
-      },
-      redirect: "follow",
-      body: JSON.stringify({
-        chat_id: Config.TG_CHAT_ID,
-        text: msg,
-        disable_web_page_preview: true,
-        parse_mode: "markdown",
-      }),
-    }
-  );
-  const res = await req.json();
-  return res.ok;
+  try {
+    const req = await fetch(
+      `https://api.telegram.org/bot${Config.TG_BOT_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: {
+          "Access-Control-Allow-Origin": "https://api.telegram.org",
+          "Content-Type": "application/json",
+        },
+        redirect: "follow",
+        body: JSON.stringify({
+          chat_id: Config.TG_CHAT_ID,
+          text: msg,
+          disable_web_page_preview: true,
+          parse_mode: "markdown",
+        }),
+      }
+    );
+    const res = await req.json();
+    return res.ok;
+  } catch {
+    return null;
+  }
 }
