@@ -1,4 +1,4 @@
-<!-- 
+<!--
  realm.rd, Scribble the plans, spill the thoughts.
  Copyright (C) 2025 Jayant Hegde Kageri <https://github.com/jayantkageri/>
 
@@ -16,39 +16,100 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  -->
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<p align="center">
+  <a href="https://nextjs.org">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://assets.vercel.com/image/upload/v1662130559/nextjs/Icon_dark_background.png">
+      <img src="https://assets.vercel.com/image/upload/v1662130559/nextjs/Icon_light_background.png" height="128">
+    </picture>
+    <h1 align="center">Next.js</h1>
+  </a>
+</p>
 
-## Getting Started
+❤️‍🔥 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-First, run the development server:
+---
+
+## 🧠 Description
+
+**REALM.RD** is a minimal, self-hostable platform designed to **log daily thoughts**, **capture notes**, and **track expenses** — all under one unified interface.
+
+Whether you're jotting down a private entry, scribbling plans, or managing your daily budget, REALM.RD provides the tools you need to do it quickly, securely, and without distractions.
+
+> 🗒️ _Daily Diary_ · 🧾 _Notekeeping_ · 💸 _Book of Expenditure_
+
+---
+
+## 🚀 Getting Started
+
+🏃‍♀️ First, install dependencies and run the development server:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+👉 Open [http://localhost:3000](http://localhost:3000) in your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📖 Learn More
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
+📚 To learn more about Next.js, take a look at the following resources:
 
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+👀 You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome! 💻
 
-## Deploy on Vercel
+## 💡 Features
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- 📓 **Daily Diary** — Timestamped daily logs, markdown-ready.
+- 📝 **Notekeeping** — Lightweight, structured note management.
+- 💸 **Book of Expenditure** — Simple budget tracking and ledger-style records.
+- 🔐 **JWT Authentication** — Private access to your notes and logs.
+- 🧠 **Encrypted Drafts** — libsodium-based encryption.
+- 📊 **Export to Excel** — Save the expense entries as `.xlsx`.
+- 🛎️ **Telegram Notifications** _(optional)_ — Instant alerts via bot integration.
+- 🧱 **Fully Modular Design** — Easily extensible and componentized.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+
+## 🗺️ Environment Variables
+
+🌟 This Next.js project requires some necessary environment variables to run. These variables are stored in a 📁 `.env` file at the root of the project or the 🖥️ machine's Environment Variables.📝 Below is a list of all the environment variables required by the project along with their descriptions:
+
+- 🌐 `NEXT_PUBLIC_DOMAIN` (**required**): This variable specifies the domain name of the website and is used for generating absolute URLs (e.g., `https://realm.example.com`).
+
+- 🔐 `JWT_SECRET` (**required**): This is a secret string that is used to sign the JWT tokens. Changing this value will revoke all existing sessions.
+
+- 🍪 `SESSION_DURATION` (_optional_): This variable specifies the duration of the session in days. The default value is `15`.
+
+- 💾 `MONGODB_URI` (**required**): This variable specifies the URI to the MongoDB database.
+
+- 🤖 `TG_BOT_TOKEN` (_optional_): This variable specifies the Telegram Bot Token, which is used for sending alerts.
+
+- 💬 `TG_CHAT_ID` (_optional_): This variable specifies the Telegram Chat ID, which is used for sending alerts.
+
+## ⚡ Technologies Used
+
+- 🟢 [Node.js](https://nodejs.org/en/)
+- 🔵 [TypeScript](https://www.typescriptlang.org/)
+- ⚛️ [Next.js](https://nextjs.org/)
+- 🎨 [Tailwind CSS](https://tailwindcss.com/)
+- 🍃 [MongoDB](https://www.mongodb.com/)
+- 🧱 [Mongoose](https://mongoosejs.com/)
+- 🔒 [JWT](https://jwt.io/)
+- 🔐 [BcryptJS](https://www.npmjs.com/package/bcryptjs)
+- 🧠 [Libsodium](https://github.com/jedisct1/libsodium.js)
+- 💾 [XLSX](https://www.npmjs.com/package/xlsx)
+- 📤 [Telegram Bot API](https://core.telegram.org/bots/api)
+- 🔥 [Codemirror](https://codemirror.net/)
+- 🧱 [Mantine UI](https://mantine.dev/)
+- 📚 [MDX Editor](https://github.com/mdx-editor/editor)
+- 📦 [PNPM](https://pnpm.io/)
+
+## 📜 License
+
+- 📝 Copyright (C) 2025 [Jayant Hegde Kageri](https://jayantkageri.in)
+- 🔏 Licensed under the Terms and Conditions of [GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)](/COPYING.txt)
+
+[<img alt="GNU AGPL-3.0-or-later" src="https://upload.wikimedia.org/wikipedia/commons/0/06/AGPLv3_Logo.svg" height="90" />](/COPYING.txt)
