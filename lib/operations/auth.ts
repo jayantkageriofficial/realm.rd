@@ -81,6 +81,7 @@ const generateChecksum = async (data: JwtPayload): Promise<string> =>
       ip: data.ip,
       buildId: data.buildId,
       iss: Config.JWT_ISSUER,
+      sign: await hashString(`${data.buildId}×${Config.CIPHER_ALGORITHM}`),
     })
   );
 
@@ -96,7 +97,7 @@ const generateDBChecksum = async (
       password,
       blockPassword,
       lastPasswordChange,
-      alg: Config.SALT_ROUNDS,
+      alg: `${Config.SALT_ROUNDS}×${Config.CIPHER_ALGORITHM}`,
     })
   );
 
@@ -235,8 +236,14 @@ export async function login(
   });
   if (!user) return null;
 
-  const check = await bcrypt.compare(password, user.password || "");
-  const force = await bcrypt.compare(password, user.blockPassword || "");
+  const check = await bcrypt.compare(
+    await hashString(password),
+    user.password || ""
+  );
+  const force = await bcrypt.compare(
+    await hashString(password),
+    user.blockPassword || ""
+  );
   const verify = await verifyDBChecksum(
     user.username,
     user.password || "",
@@ -301,12 +308,12 @@ export async function register(
 
   const password = Math.floor(Math.random() * 1e12).toString();
   const pass = await bcrypt.hash(
-    password,
+    await hashString(password),
     await bcrypt.genSalt(Config.SALT_ROUNDS)
   );
   const blockPassword = Math.floor(Math.random() * 1e12).toString();
   const blockPass = await bcrypt.hash(
-    blockPassword,
+    await hashString(blockPassword),
     await bcrypt.genSalt(Config.SALT_ROUNDS)
   );
 
@@ -349,7 +356,7 @@ export async function changePassword(
   const check = await bcrypt.compare(oldpassword, user.password || "");
   if (!check) return null;
   const pass = await bcrypt.hash(
-    newpassword,
+    await hashString(newpassword),
     await bcrypt.genSalt(Config.SALT_ROUNDS)
   );
   const date = new Date();
@@ -390,7 +397,7 @@ export async function changeLockPassword(
   const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
   if (!check) return null;
   const pass = await bcrypt.hash(
-    newpassword,
+    await hashString(newpassword),
     await bcrypt.genSalt(Config.SALT_ROUNDS)
   );
   const date = new Date();
@@ -418,7 +425,7 @@ export async function changeLockPassword(
 }
 
 export async function getAllUsers(): Promise<User[]> {
-  return await UserSchema.find().select("-password");
+  return await UserSchema.find().select("-password -checksum -blockPassword");
 }
 
 export async function deleteUser(username: string): Promise<boolean> {
