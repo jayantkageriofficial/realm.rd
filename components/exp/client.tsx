@@ -689,7 +689,13 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
         const dataForSheet = accountTransactions.map((t) => {
           runningBalance += t.amount;
           return {
-            Date: t.date,
+            Date: new Date(t.date)
+              .toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+              })
+              .replace(/\//g, "-"),
             Description: t.description,
             Amount: t.amount,
             Type: t.type,
