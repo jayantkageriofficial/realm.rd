@@ -104,7 +104,6 @@ const DBTokenSchema = new Schema<Token>({
   timestamp: {
     type: Date,
     default: Date.now,
-    expires: Config.SESSION_DURATION * 60,
   },
 });
 

@@ -149,11 +149,19 @@ async function token({
     subject: Config.DOMAIN,
   });
 
-  await TokenSchema.findOneAndDelete({ username: user.username });
-  const db = await new TokenSchema({
-    username: user.username,
-    token: gen,
-  }).save();
+  const db = await TokenSchema.findOneAndUpdate(
+    { username: user.username },
+    {
+      username: user.username,
+      token: gen,
+      timestamp: new Date(),
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
 
   return db.token;
 }
