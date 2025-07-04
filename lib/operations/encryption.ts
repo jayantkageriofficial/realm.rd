@@ -16,98 +16,395 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import crypto from "node:crypto";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
+import os from "os";
+import path from "path";
+import fs from "fs/promises";
 import sodium from "libsodium-wrappers";
-import Config from "@/lib/constant";
+import { createHmac, createCipheriv, createDecipheriv } from "crypto";
+import { promisify } from "util";
 
-const APP_DATA_DIR = path.join(os.homedir(), "AppData", "Local", "realm");
+// Define Config with provided values
+const Config = {
+  CIPHER_ALGORITHM: "aes-256-cbc",
+  CIPHER_KEY_SIZE: 32,
+  CIPHER_IV_SIZE: 16,
+  CIPHER_ENCODING: "hex" as BufferEncoding,
+};
+
+// Validate Config at module initialization
+(function validateConfig() {
+  if (Config.CIPHER_ALGORITHM !== "aes-256-cbc") {
+    throw new Error(`Unsupported cipher algorithm: ${Config.CIPHER_ALGORITHM}`);
+  }
+  if (Config.CIPHER_KEY_SIZE !== 32) {
+    throw new Error(
+      `Invalid key size: ${Config.CIPHER_KEY_SIZE} for AES-256-CBC`
+    );
+  }
+  if (Config.CIPHER_IV_SIZE !== 16) {
+    throw new Error(
+      `Invalid IV size: ${Config.CIPHER_IV_SIZE} for AES-256-CBC`
+    );
+  }
+  if (!["hex", "base64"].includes(Config.CIPHER_ENCODING)) {
+    throw new Error(`Unsupported encoding: ${Config.CIPHER_ENCODING}`);
+  }
+})();
+
+const setImmediatePromise = promisify(setImmediate);
+
+function secureZeroBuffer(buffer: Buffer): void {
+  if (buffer && buffer.length > 0) buffer.fill(0);
+}
+
+function secureZeroUint8Array(array: Uint8Array): void {
+  if (array && array.length > 0) array.fill(0);
+}
+
+function getAppDataDirectory(): string {
+  const platform = process.platform;
+  const homeDir = os.homedir();
+
+  switch (platform) {
+    case "win32":
+      return path.join(homeDir, "AppData", "Local", "realm");
+    case "darwin":
+      return path.join(homeDir, "Library", "Application Support", "realm");
+    case "linux":
+    default:
+      return path.join(homeDir, ".config", "realm");
+  }
+}
+
+const APP_DATA_DIR = getAppDataDirectory();
 const TEMP_DATA_DIR = path.join(os.tmpdir(), "realm");
-const KEY_PATH = path.join(APP_DATA_DIR, "cipher_key.bin");
-const IV_PATH = path.join(APP_DATA_DIR, "cipher_iv.bin");
+const MASTER_KEY_PATH = path.join(APP_DATA_DIR, "master_key.bin");
 
-async function protectData(data: Buffer, outputPath: string): Promise<void> {
+async function ensureSodiumReady(): Promise<void> {
   await sodium.ready;
-  const outputDir = path.dirname(outputPath);
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
 
-  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
-  const key = sodium.randombytes_buf(sodium.crypto_secretbox_KEYBYTES);
-  const encrypted = sodium.crypto_secretbox_easy(data, nonce, key);
-
-  const combined = Buffer.concat([nonce, key, encrypted]);
-  fs.writeFileSync(outputPath, combined, { mode: 0o600 });
+  if (typeof sodium.randombytes_buf !== "function")
+    throw new Error("sodium.randombytes_buf is not available");
+  if (typeof sodium.crypto_secretbox_easy !== "function")
+    throw new Error("sodium.crypto_secretbox_easy is not available");
+  if (typeof sodium.crypto_secretbox_open_easy !== "function")
+    throw new Error("sodium.crypto_secretbox_open_easy is not available");
 }
 
-async function unprotectData(inputPath: string): Promise<Buffer> {
-  await sodium.ready;
+async function setSecureFilePermissions(filePath: string): Promise<void> {
+  try {
+    if (process.platform === "win32") {
+      const { exec } = await import("child_process");
+      const { promisify } = await import("util");
+      const execAsync = promisify(exec);
 
-  if (!fs.existsSync(inputPath))
-    throw new Error(`File not found: ${inputPath}`);
-
-  const combined = fs.readFileSync(inputPath);
-
-  const nonce = combined.slice(0, sodium.crypto_secretbox_NONCEBYTES);
-  const key = combined.slice(
-    sodium.crypto_secretbox_NONCEBYTES,
-    sodium.crypto_secretbox_NONCEBYTES + sodium.crypto_secretbox_KEYBYTES
-  );
-  const encrypted = combined.slice(
-    sodium.crypto_secretbox_NONCEBYTES + sodium.crypto_secretbox_KEYBYTES
-  );
-
-  const decrypted = sodium.crypto_secretbox_open_easy(encrypted, nonce, key);
-  return Buffer.from(decrypted);
+      await execAsync(
+        `icacls "${filePath}" /inheritance:r /grant:r "%USERNAME%":F`
+      );
+    } else await fs.chmod(filePath, 0o600);
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to set secure file permissions: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
 }
 
-async function initializeEncryption(): Promise<void> {
-  await sodium.ready;
+async function createSecureDirectory(dirPath: string): Promise<void> {
+  try {
+    await fs.access(dirPath);
+  } catch (error: unknown) {
+    await fs.mkdir(dirPath, { recursive: true, mode: 0o700 });
+    if (process.platform !== "win32") await fs.chmod(dirPath, 0o700);
+  }
+}
 
-  if (!fs.existsSync(APP_DATA_DIR))
-    fs.mkdirSync(APP_DATA_DIR, { recursive: true });
-  if (!fs.existsSync(TEMP_DATA_DIR))
-    fs.mkdirSync(TEMP_DATA_DIR, { recursive: true });
+async function generateMasterKey(): Promise<Buffer> {
+  await ensureSodiumReady();
 
-  if (!fs.existsSync(KEY_PATH))
-    await protectData(
-      Buffer.from(sodium.randombytes_buf(Config.CIPHER_KEY_SIZE)),
-      KEY_PATH
+  try {
+    const masterKey = sodium.randombytes_buf(32);
+    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES);
+    const storageKey = sodium.randombytes_buf(sodium.crypto_secretbox_KEYBYTES);
+
+    const encrypted = sodium.crypto_secretbox_easy(
+      masterKey,
+      nonce,
+      storageKey
     );
-  if (!fs.existsSync(IV_PATH))
-    await protectData(
-      Buffer.from(sodium.randombytes_buf(Config.CIPHER_IV_SIZE)),
-      IV_PATH
+
+    const combined = Buffer.concat([
+      Buffer.from(nonce),
+      Buffer.from(storageKey),
+      Buffer.from(encrypted),
+    ]);
+
+    secureZeroUint8Array(masterKey);
+    secureZeroUint8Array(storageKey);
+
+    return combined;
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to generate master key: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
     );
+  }
+}
+
+async function loadMasterKey(): Promise<Buffer> {
+  await ensureSodiumReady();
+
+  try {
+    await fs.access(MASTER_KEY_PATH);
+  } catch (error: unknown) {
+    throw new Error("Master key file not found");
+  }
+
+  try {
+    const combined = await fs.readFile(MASTER_KEY_PATH);
+
+    const minSize =
+      sodium.crypto_secretbox_NONCEBYTES +
+      sodium.crypto_secretbox_KEYBYTES +
+      sodium.crypto_secretbox_MACBYTES;
+
+    if (combined.length < minSize) {
+      throw new Error(
+        `Master key file too small: ${combined.length} < ${minSize} bytes`
+      );
+    }
+
+    let offset = 0;
+    const nonce = combined.subarray(
+      offset,
+      offset + sodium.crypto_secretbox_NONCEBYTES
+    );
+    offset += sodium.crypto_secretbox_NONCEBYTES;
+
+    const storageKey = combined.subarray(
+      offset,
+      offset + sodium.crypto_secretbox_KEYBYTES
+    );
+    offset += sodium.crypto_secretbox_KEYBYTES;
+
+    const encrypted = combined.subarray(offset);
+
+    const masterKey = sodium.crypto_secretbox_open_easy(
+      encrypted,
+      nonce,
+      storageKey
+    );
+
+    secureZeroBuffer(Buffer.from(storageKey));
+    return Buffer.from(masterKey);
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to load master key: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
+}
+
+async function initializeMasterKey(): Promise<Buffer> {
+  try {
+    return await loadMasterKey();
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.includes("not found")) {
+      await createSecureDirectory(APP_DATA_DIR);
+      await createSecureDirectory(TEMP_DATA_DIR);
+
+      const keyData = await generateMasterKey();
+      await fs.writeFile(MASTER_KEY_PATH, keyData, { mode: 0o600 });
+      await setSecureFilePermissions(MASTER_KEY_PATH);
+
+      return await loadMasterKey();
+    }
+    throw error;
+  }
+}
+
+/**
+ * Asynchronously derives a key using HKDF with SHA-256, yielding to the event loop for non-blocking behavior.
+ * @param algorithm The hash algorithm (e.g., "sha256").
+ * @param masterKey The input key material.
+ * @param salt The salt for HKDF extract phase.
+ * @param info Optional context/info for HKDF expand phase.
+ * @param keyLength The desired length of the derived key in bytes.
+ * @returns A Promise resolving to the derived key as a Buffer.
+ * @throws Error if the derivation fails or inputs are invalid.
+ */
+async function hkdfAsync(
+  algorithm: string,
+  masterKey: Buffer,
+  salt: Buffer,
+  info: Buffer,
+  keyLength: number
+): Promise<Buffer> {
+  if (!["sha256"].includes(algorithm)) {
+    throw new Error(`Unsupported HKDF algorithm: ${algorithm}`);
+  }
+  if (!masterKey || !Buffer.isBuffer(masterKey) || masterKey.length === 0) {
+    throw new Error("Invalid master key");
+  }
+  if (!salt || !Buffer.isBuffer(salt) || salt.length === 0) {
+    throw new Error("Invalid salt");
+  }
+  if (!info || !Buffer.isBuffer(info)) {
+    throw new Error("Invalid info parameter");
+  }
+  if (keyLength <= 0 || keyLength > 255 * 32) {
+    // SHA-256 produces 32-byte output, max key length is 255 * hash length
+    throw new Error(`Invalid key length: ${keyLength}`);
+  }
+
+  // HKDF-Extract: Generate PRK (Pseudo-Random Key)
+  await setImmediatePromise(); // Yield to event loop
+  const prk: Buffer = createHmac(algorithm, salt).update(masterKey).digest();
+
+  // HKDF-Expand: Generate output key
+  let t: Buffer = Buffer.alloc(0);
+  let okm: Buffer = Buffer.alloc(0); // Output Keying Material
+  const hashLength = 32; // SHA-256 output size
+  const iterations = Math.ceil(keyLength / hashLength);
+
+  for (let i = 0; i < iterations; i++) {
+    await setImmediatePromise(); // Yield to event loop
+
+    const hmac = createHmac(algorithm, prk);
+    hmac.update(t);
+    if (info.length > 0) hmac.update(info);
+    hmac.update(Buffer.from([i + 1])); // 1-based counter
+    t = hmac.digest();
+
+    okm = Buffer.concat([okm, t]);
+  }
+
+  return okm.slice(0, keyLength);
 }
 
 async function encryptData(data: string): Promise<string> {
-  await initializeEncryption();
-  const key = await unprotectData(KEY_PATH);
-  const iv = await unprotectData(IV_PATH);
+  if (!data || typeof data !== "string")
+    throw new Error("Invalid input data for encryption");
 
-  const cipher = crypto.createCipheriv(Config.CIPHER_ALGORITHM, key, iv);
-  let encrypted = cipher.update(data, "utf8", Config.CIPHER_ENCODING);
-  encrypted += cipher.final(Config.CIPHER_ENCODING);
+  let masterKey: Buffer | null = null;
+  let derivedKey: Buffer | null = null;
+  let iv: Buffer | null = null;
 
-  return encrypted;
+  try {
+    await ensureSodiumReady();
+    masterKey = await initializeMasterKey();
+
+    iv = Buffer.from(sodium.randombytes_buf(Config.CIPHER_IV_SIZE));
+    const salt = Buffer.from(sodium.randombytes_buf(32));
+
+    derivedKey = await hkdfAsync(
+      "sha256",
+      masterKey,
+      salt,
+      Buffer.alloc(0),
+      Config.CIPHER_KEY_SIZE
+    );
+
+    const cipher = createCipheriv(Config.CIPHER_ALGORITHM, derivedKey, iv);
+
+    let encrypted = cipher.update(data, "utf8", Config.CIPHER_ENCODING);
+    encrypted += cipher.final();
+
+    const combined = Buffer.concat([
+      salt,
+      iv,
+      Buffer.from(encrypted, Config.CIPHER_ENCODING),
+    ]);
+
+    return combined.toString(Config.CIPHER_ENCODING);
+  } catch (error: unknown) {
+    throw new Error(
+      `Encryption failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  } finally {
+    if (masterKey) secureZeroBuffer(masterKey);
+    if (derivedKey) secureZeroBuffer(derivedKey);
+    if (iv) secureZeroBuffer(iv);
+  }
 }
 
 async function decryptData(encryptedData: string): Promise<string> {
-  await initializeEncryption();
-  const key = await unprotectData(KEY_PATH);
-  const iv = await unprotectData(IV_PATH);
+  if (!encryptedData || typeof encryptedData !== "string")
+    throw new Error("Invalid encrypted data for decryption");
 
-  const decipher = crypto.createDecipheriv(Config.CIPHER_ALGORITHM, key, iv);
-  let decrypted = decipher.update(
-    encryptedData,
-    Config.CIPHER_ENCODING,
-    "utf8"
-  );
-  decrypted += decipher.final("utf8");
+  let masterKey: Buffer | null = null;
+  let derivedKey: Buffer | null = null;
 
-  return decrypted;
+  try {
+    await ensureSodiumReady();
+    masterKey = await initializeMasterKey();
+
+    // Validate hex encoding
+    if (!/^[0-9a-fA-F]+$/.test(encryptedData)) {
+      throw new Error("Invalid hex encoded data");
+    }
+
+    const combined = Buffer.from(encryptedData, Config.CIPHER_ENCODING);
+
+    const minSize = 32 + Config.CIPHER_IV_SIZE;
+    if (combined.length < minSize)
+      throw new Error(
+        `Invalid encrypted data format: ${combined.length} bytes too small`
+      );
+
+    const salt = combined.subarray(0, 32);
+    const iv = combined.subarray(32, 32 + Config.CIPHER_IV_SIZE);
+    const encrypted = combined.subarray(32 + Config.CIPHER_IV_SIZE);
+
+    derivedKey = await hkdfAsync(
+      "sha256",
+      masterKey,
+      salt,
+      Buffer.alloc(0),
+      Config.CIPHER_KEY_SIZE
+    );
+
+    const decipher = createDecipheriv(Config.CIPHER_ALGORITHM, derivedKey, iv);
+
+    let decrypted = decipher.update(encrypted, undefined, "utf8");
+    decrypted += decipher.final("utf8");
+
+    return decrypted;
+  } catch (error: unknown) {
+    throw new Error(
+      `Decryption failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  } finally {
+    if (masterKey) secureZeroBuffer(masterKey);
+    if (derivedKey) secureZeroBuffer(derivedKey);
+  }
 }
 
-export { encryptData, decryptData };
+async function cleanup(): Promise<void> {
+  try {
+    await ensureSodiumReady();
+    await fs.access(TEMP_DATA_DIR);
+    const tempFiles = await fs.readdir(TEMP_DATA_DIR);
+
+    await Promise.all(
+      tempFiles.map(async (file) => {
+        const filePath = path.join(TEMP_DATA_DIR, file);
+        try {
+          const stats = await fs.stat(filePath);
+          const randomData = Buffer.from(sodium.randombytes_buf(stats.size));
+          await fs.writeFile(filePath, randomData);
+          await fs.unlink(filePath);
+        } catch {}
+      })
+    );
+  } catch {}
+}
+
+export { encryptData, decryptData, cleanup };

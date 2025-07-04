@@ -24,6 +24,7 @@ import {
   getRedisConnection,
 } from "@/lib/database/connection";
 import { MiscSchema, type User, UserSchema } from "@/lib/database/schema";
+import { cleanup } from "@/lib/operations/encryption";
 import { log } from "@/lib/operations/logs";
 
 export interface JwtPayload {
@@ -31,6 +32,7 @@ export interface JwtPayload {
 
   ip?: string;
   buildId?: string;
+  checksum?: string;
 
   iss?: string;
   sub?: string;
@@ -129,27 +131,32 @@ async function token({
   const opt: JwtPayload = {
     username: user.username,
   };
+  const tokenTTL = Config.SESSION_DURATION * 60;
 
-  const gen = jwt.sign(opt, Config.JWT_SECRET, {
-    algorithm: Config.JWT_ALGORITHM,
-    expiresIn: Config.SESSION_DURATION * 60,
-    header: {
-      alg: Config.JWT_ALGORITHM,
-      ...{
-        checksum: await generateChecksum({
-          ip,
-          buildId: process.env.BUILD_ID,
-          ...opt,
-        }),
-      },
+  const gen = jwt.sign(
+    {
+      ...opt,
+      checksum: await generateChecksum({
+        ip,
+        buildId: process.env.BUILD_ID,
+        ...opt,
+      }),
     },
-    issuer: Config.JWT_ISSUER,
-    subject: Config.DOMAIN,
-  });
+    Config.JWT_SECRET,
+    {
+      algorithm: Config.JWT_ALGORITHM,
+      expiresIn: tokenTTL,
+      header: {
+        alg: Config.JWT_ALGORITHM,
+      },
+      issuer: Config.JWT_ISSUER,
+      subject: Config.DOMAIN,
+    }
+  );
 
   const redis = await getRedisConnection();
   await redis.set(await hashString(user.username), gen, {
-    EX: Config.SESSION_DURATION * 60,
+    EX: tokenTTL,
   });
   return gen;
 }
@@ -159,46 +166,30 @@ export async function verify(
   ip: string
 ): Promise<null | JwtPayload> {
   try {
-    const verification = jwt.verify(token, Config.JWT_SECRET);
+    const verification: JwtPayload = jwt.verify(token, Config.JWT_SECRET, {
+      algorithms: [Config.JWT_ALGORITHM],
+      issuer: Config.JWT_ISSUER,
+      subject: Config.DOMAIN,
+    }) as JwtPayload;
     if (!verification) return null;
 
-    const {
-      header,
-      payload,
-    }: {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      header: any;
-      payload: JwtPayload;
-    } = (() => {
-      const decoded = jwt.decode(token, {
-        complete: true,
-      }) as unknown as {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        header: any;
-        payload: JwtPayload;
-      } | null;
-      if (!decoded) return { header: undefined, payload: {} as JwtPayload };
-      return decoded;
-    })();
-
     if (
-      payload.iss !== Config.JWT_ISSUER ||
-      payload.sub !== Config.DOMAIN ||
-      header?.alg !== Config.JWT_ALGORITHM ||
+      verification.iss !== Config.JWT_ISSUER ||
+      verification.sub !== Config.DOMAIN ||
       !(await verifyChecksum(
-        { ip, buildId: process.env.BUILD_ID, ...payload },
-        header?.checksum
+        { ip, buildId: process.env.BUILD_ID, ...verification },
+        verification?.checksum || ""
       ))
     )
       return null;
 
-    const signed = new Date((payload.iat as number) * 1000 || "");
+    const signed = new Date((verification.iat as number) * 1000 || "");
 
     if (Date.now() - signed.valueOf() > 60000 * Config.SESSION_DURATION)
       return null;
 
     const user = await UserSchema.findOne({
-      username: payload.username,
+      username: verification.username,
     });
     if (!user) return null;
 
@@ -210,8 +201,8 @@ export async function verify(
       return null;
 
     return {
-      ip: payload.ip,
-      username: payload.username,
+      ip: verification.ip,
+      username: verification.username,
     };
   } catch {
     return null;
@@ -251,6 +242,7 @@ export async function login(
       blocked: true,
     }).save();
     await closeAllConnections();
+    await cleanup();
     await log(
       "lock",
       `The application has been locked as per the request of the user  __**${username.toLowerCase()} via ${
@@ -323,7 +315,7 @@ export async function register(
   );
 
   const newUser = await new UserSchema({
-    username: (await hashString(username.toLowerCase())).toLowerCase(),
+    username: await hashString(username.toLowerCase()),
     password: pass,
     blockPassword: blockPass,
     name,
@@ -392,7 +384,7 @@ export async function changeLockPassword(
 ): Promise<string | null> {
   if (newpassword.length < 8) return null;
   const user = await UserSchema.findOne({
-    username: username.toLowerCase(),
+    username: username,
   });
   if (!user) return null;
   const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
@@ -405,7 +397,7 @@ export async function changeLockPassword(
   );
   const date = new Date();
   const checksum = await generateDBChecksum(
-    username.toLowerCase(),
+    username,
     user.password || "",
     pass,
     getDate(date)
@@ -433,24 +425,12 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 export async function deleteUser(username: string): Promise<boolean> {
-  if (
-    !(await UserSchema.findOne({
-      username: await hashString(username.toLowerCase()),
-    }))
-  )
-    return false;
+  const user = await UserSchema.findOne({
+    username: await hashString(username.toLowerCase()),
+  });
+  if (!user) return false;
 
   const redis = await getRedisConnection();
-  await redis.del(
-    (
-      await UserSchema.findOne({
-        username: await hashString(username.toLowerCase()),
-      })
-    )._id.toString()
-  );
-  return Boolean(
-    await UserSchema.findOneAndDelete({
-      username: await hashString(username.toLowerCase()),
-    })
-  );
+  await redis.del(user._id.toString());
+  return Boolean(await UserSchema.findByIdAndDelete(user._id));
 }
