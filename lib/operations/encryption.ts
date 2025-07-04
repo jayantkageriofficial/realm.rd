@@ -244,9 +244,69 @@ async function hkdfAsync(
   return okm.slice(0, keyLength);
 }
 
+function isValidHexString(str: string): boolean {
+  if (!str || typeof str !== "string") return false;
+
+  // Remove any whitespace
+  str = str.trim();
+
+  // Check if length is even (hex strings should have even length)
+  if (str.length % 2 !== 0) return false;
+
+  // Check if all characters are valid hex
+  return /^[0-9a-fA-F]+$/.test(str);
+}
+
+function isValidBase64String(str: string): boolean {
+  if (!str || typeof str !== "string") return false;
+
+  // Remove any whitespace
+  str = str.trim();
+
+  // Base64 regex pattern
+  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+
+  return base64Regex.test(str) && str.length % 4 === 0;
+}
+
+function detectEncoding(str: string): "hex" | "base64" | "unknown" {
+  if (isValidHexString(str)) return "hex";
+  if (isValidBase64String(str)) return "base64";
+  return "unknown";
+}
+
+function getDataInfo(data: any): object {
+  if (data === null) return { type: "null", value: "null" };
+  if (data === undefined) return { type: "undefined", value: "undefined" };
+
+  const type = typeof data;
+
+  if (type === "string") {
+    return {
+      type: "string",
+      length: data.length,
+      isEmpty: data.length === 0,
+      preview: data.substring(0, 50),
+      hasWhitespace: /\s/.test(data),
+      isValidHex: isValidHexString(data),
+      isValidBase64: isValidBase64String(data),
+      detectedEncoding: detectEncoding(data),
+    };
+  }
+
+  return {
+    type,
+    value: String(data).substring(0, 100),
+  };
+}
+
 async function encryptData(data: string): Promise<string> {
-  if (!data || typeof data !== "string")
-    throw new Error("Invalid input data for encryption");
+  if (!data || typeof data !== "string") {
+    const dataInfo = getDataInfo(data);
+    throw new Error(
+      `Invalid input data for encryption. Received: ${JSON.stringify(dataInfo)}`
+    );
+  }
 
   let masterKey: Buffer | null = null;
   let derivedKey: Buffer | null = null;
@@ -268,17 +328,11 @@ async function encryptData(data: string): Promise<string> {
     );
 
     const cipher = createCipheriv(Config.CIPHER_ALGORITHM, derivedKey, iv);
+    let encrypted = cipher.update(data, "utf8", "hex");
+    encrypted += cipher.final("hex");
 
-    let encrypted = cipher.update(data, "utf8", Config.CIPHER_ENCODING);
-    encrypted += cipher.final();
-
-    const combined = Buffer.concat([
-      salt,
-      iv,
-      Buffer.from(encrypted, Config.CIPHER_ENCODING),
-    ]);
-
-    return combined.toString(Config.CIPHER_ENCODING);
+    const combined = Buffer.concat([salt, iv, Buffer.from(encrypted, "hex")]);
+    return combined.toString("hex");
   } catch (error: unknown) {
     throw new Error(
       `Encryption failed: ${
@@ -293,8 +347,15 @@ async function encryptData(data: string): Promise<string> {
 }
 
 async function decryptData(encryptedData: string): Promise<string> {
-  if (!encryptedData || typeof encryptedData !== "string")
-    throw new Error("Invalid encrypted data for decryption");
+  const originalDataInfo = getDataInfo(encryptedData);
+
+  if (!encryptedData || typeof encryptedData !== "string") {
+    throw new Error(
+      `Invalid encrypted data for decryption. Received: ${JSON.stringify(
+        originalDataInfo
+      )}`
+    );
+  }
 
   let masterKey: Buffer | null = null;
   let derivedKey: Buffer | null = null;
@@ -303,18 +364,40 @@ async function decryptData(encryptedData: string): Promise<string> {
     await ensureSodiumReady();
     masterKey = await initializeMasterKey();
 
-    // Validate hex encoding
-    if (!/^[0-9a-fA-F]+$/.test(encryptedData)) {
-      throw new Error("Invalid hex encoded data");
+    const cleanedData = encryptedData.trim();
+    const encoding = detectEncoding(cleanedData);
+
+    let combined: Buffer;
+
+    switch (encoding) {
+      case "hex":
+        combined = Buffer.from(cleanedData, "hex");
+        break;
+      case "base64":
+        combined = Buffer.from(cleanedData, "base64");
+        break;
+      default:
+        const hasBase64Chars = /[+/=]/.test(cleanedData);
+        const hasHexChars = /^[0-9a-fA-F\s]*$/.test(cleanedData);
+
+        throw new Error(
+          `Unable to determine encoding for encrypted data. ` +
+            `Detected: ${encoding}. ` +
+            `Has Base64 chars (+/=): ${hasBase64Chars}. ` +
+            `Has only hex chars: ${hasHexChars}. ` +
+            `Data info: ${JSON.stringify(originalDataInfo)}`
+        );
     }
 
-    const combined = Buffer.from(encryptedData, Config.CIPHER_ENCODING);
-
     const minSize = 32 + Config.CIPHER_IV_SIZE;
-    if (combined.length < minSize)
+    if (combined.length < minSize) {
       throw new Error(
-        `Invalid encrypted data format: ${combined.length} bytes too small`
+        `Invalid encrypted data format: ${combined.length} bytes, expected at least ${minSize} bytes. ` +
+          `Encoding used: ${encoding}. Data info: ${JSON.stringify(
+            originalDataInfo
+          )}`
       );
+    }
 
     const salt = combined.subarray(0, 32);
     const iv = combined.subarray(32, 32 + Config.CIPHER_IV_SIZE);
@@ -335,11 +418,22 @@ async function decryptData(encryptedData: string): Promise<string> {
 
     return decrypted;
   } catch (error: unknown) {
-    throw new Error(
-      `Decryption failed: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+
+    const debugInfo = {
+      originalData: originalDataInfo,
+      configInfo: {
+        CIPHER_IV_SIZE: Config.CIPHER_IV_SIZE,
+        CIPHER_KEY_SIZE: Config.CIPHER_KEY_SIZE,
+        CIPHER_ALGORITHM: Config.CIPHER_ALGORITHM,
+      },
+      nodeEnv: process.env.NODE_ENV,
+      timestamp: new Date().toISOString(),
+      errorMessage,
+    };
+
+    throw new Error(`Decryption failed: ${errorMessage}`);
   } finally {
     if (masterKey) secureZeroBuffer(masterKey);
     if (derivedKey) secureZeroBuffer(derivedKey);
