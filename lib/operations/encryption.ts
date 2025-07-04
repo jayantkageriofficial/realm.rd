@@ -246,26 +246,15 @@ async function hkdfAsync(
 
 function isValidHexString(str: string): boolean {
   if (!str || typeof str !== "string") return false;
-
-  // Remove any whitespace
   str = str.trim();
-
-  // Check if length is even (hex strings should have even length)
   if (str.length % 2 !== 0) return false;
-
-  // Check if all characters are valid hex
   return /^[0-9a-fA-F]+$/.test(str);
 }
 
 function isValidBase64String(str: string): boolean {
   if (!str || typeof str !== "string") return false;
-
-  // Remove any whitespace
   str = str.trim();
-
-  // Base64 regex pattern
   const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-
   return base64Regex.test(str) && str.length % 4 === 0;
 }
 
@@ -275,37 +264,9 @@ function detectEncoding(str: string): "hex" | "base64" | "unknown" {
   return "unknown";
 }
 
-function getDataInfo(data: any): object {
-  if (data === null) return { type: "null", value: "null" };
-  if (data === undefined) return { type: "undefined", value: "undefined" };
-
-  const type = typeof data;
-
-  if (type === "string") {
-    return {
-      type: "string",
-      length: data.length,
-      isEmpty: data.length === 0,
-      preview: data.substring(0, 50),
-      hasWhitespace: /\s/.test(data),
-      isValidHex: isValidHexString(data),
-      isValidBase64: isValidBase64String(data),
-      detectedEncoding: detectEncoding(data),
-    };
-  }
-
-  return {
-    type,
-    value: String(data).substring(0, 100),
-  };
-}
-
 async function encryptData(data: string): Promise<string> {
   if (!data || typeof data !== "string") {
-    const dataInfo = getDataInfo(data);
-    throw new Error(
-      `Invalid input data for encryption. Received: ${JSON.stringify(dataInfo)}`
-    );
+    throw new Error("Invalid input data for encryption.");
   }
 
   let masterKey: Buffer | null = null;
@@ -347,14 +308,8 @@ async function encryptData(data: string): Promise<string> {
 }
 
 async function decryptData(encryptedData: string): Promise<string> {
-  const originalDataInfo = getDataInfo(encryptedData);
-
   if (!encryptedData || typeof encryptedData !== "string") {
-    throw new Error(
-      `Invalid encrypted data for decryption. Received: ${JSON.stringify(
-        originalDataInfo
-      )}`
-    );
+    throw new Error("Invalid encrypted data for decryption.");
   }
 
   let masterKey: Buffer | null = null;
@@ -384,8 +339,7 @@ async function decryptData(encryptedData: string): Promise<string> {
           `Unable to determine encoding for encrypted data. ` +
             `Detected: ${encoding}. ` +
             `Has Base64 chars (+/=): ${hasBase64Chars}. ` +
-            `Has only hex chars: ${hasHexChars}. ` +
-            `Data info: ${JSON.stringify(originalDataInfo)}`
+            `Has only hex chars: ${hasHexChars}. `
         );
     }
 
@@ -393,9 +347,7 @@ async function decryptData(encryptedData: string): Promise<string> {
     if (combined.length < minSize) {
       throw new Error(
         `Invalid encrypted data format: ${combined.length} bytes, expected at least ${minSize} bytes. ` +
-          `Encoding used: ${encoding}. Data info: ${JSON.stringify(
-            originalDataInfo
-          )}`
+          `Encoding used: ${encoding}.`
       );
     }
 
@@ -418,22 +370,11 @@ async function decryptData(encryptedData: string): Promise<string> {
 
     return decrypted;
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error ? error.message : "Unknown error";
-
-    const debugInfo = {
-      originalData: originalDataInfo,
-      configInfo: {
-        CIPHER_IV_SIZE: Config.CIPHER_IV_SIZE,
-        CIPHER_KEY_SIZE: Config.CIPHER_KEY_SIZE,
-        CIPHER_ALGORITHM: Config.CIPHER_ALGORITHM,
-      },
-      nodeEnv: process.env.NODE_ENV,
-      timestamp: new Date().toISOString(),
-      errorMessage,
-    };
-
-    throw new Error(`Decryption failed: ${errorMessage}`);
+    throw new Error(
+      `Decryption failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
   } finally {
     if (masterKey) secureZeroBuffer(masterKey);
     if (derivedKey) secureZeroBuffer(derivedKey);

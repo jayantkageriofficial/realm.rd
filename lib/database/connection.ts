@@ -76,7 +76,6 @@ async function mongoConnect(): Promise<mongoose.Connection> {
     } catch (e) {
       await mongoose.disconnect();
       global.database.mongoose.promise = null;
-      error("Mongoose connection error or block detected:", e);
       throw e;
     }
   }
@@ -85,7 +84,6 @@ async function mongoConnect(): Promise<mongoose.Connection> {
     global.database.mongoose.conn = await global.database.mongoose.promise;
   } catch (e) {
     global.database.mongoose.promise = null;
-    error("Mongoose connection error:", e);
     throw e;
   }
 
@@ -106,15 +104,12 @@ async function redisConnect(): Promise<RedisClient> {
         },
       });
 
-      client.on("error", (err) => {
-        error("Redis Client Error:", err);
-      });
+      client.on("error", (err) => {});
 
       await client.connect();
       global.database.redis.promise = Promise.resolve(client);
     } catch (e) {
       global.database.redis.promise = null;
-      error("Redis connection error:", e);
       throw e;
     }
   }
@@ -123,7 +118,6 @@ async function redisConnect(): Promise<RedisClient> {
     global.database.redis.client = await global.database.redis.promise;
   } catch (e) {
     global.database.redis.promise = null;
-    error("Redis connection error:", e);
     throw e;
   }
 
