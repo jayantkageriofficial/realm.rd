@@ -19,37 +19,10 @@
 import os from "os";
 import path from "path";
 import fs from "fs/promises";
+import { promisify } from "util";
 import sodium from "libsodium-wrappers";
 import { createHmac, createCipheriv, createDecipheriv } from "crypto";
-import { promisify } from "util";
-
-// Define Config with provided values
-const Config = {
-  CIPHER_ALGORITHM: "aes-256-cbc",
-  CIPHER_KEY_SIZE: 32,
-  CIPHER_IV_SIZE: 16,
-  CIPHER_ENCODING: "hex" as BufferEncoding,
-};
-
-// Validate Config at module initialization
-(function validateConfig() {
-  if (Config.CIPHER_ALGORITHM !== "aes-256-cbc") {
-    throw new Error(`Unsupported cipher algorithm: ${Config.CIPHER_ALGORITHM}`);
-  }
-  if (Config.CIPHER_KEY_SIZE !== 32) {
-    throw new Error(
-      `Invalid key size: ${Config.CIPHER_KEY_SIZE} for AES-256-CBC`
-    );
-  }
-  if (Config.CIPHER_IV_SIZE !== 16) {
-    throw new Error(
-      `Invalid IV size: ${Config.CIPHER_IV_SIZE} for AES-256-CBC`
-    );
-  }
-  if (!["hex", "base64"].includes(Config.CIPHER_ENCODING)) {
-    throw new Error(`Unsupported encoding: ${Config.CIPHER_ENCODING}`);
-  }
-})();
+import Config from "@/lib/constant";
 
 const setImmediatePromise = promisify(setImmediate);
 
@@ -114,7 +87,7 @@ async function setSecureFilePermissions(filePath: string): Promise<void> {
 async function createSecureDirectory(dirPath: string): Promise<void> {
   try {
     await fs.access(dirPath);
-  } catch (error: unknown) {
+  } catch {
     await fs.mkdir(dirPath, { recursive: true, mode: 0o700 });
     if (process.platform !== "win32") await fs.chmod(dirPath, 0o700);
   }
@@ -158,7 +131,7 @@ async function loadMasterKey(): Promise<Buffer> {
 
   try {
     await fs.access(MASTER_KEY_PATH);
-  } catch (error: unknown) {
+  } catch {
     throw new Error("Master key file not found");
   }
 
@@ -226,16 +199,6 @@ async function initializeMasterKey(): Promise<Buffer> {
   }
 }
 
-/**
- * Asynchronously derives a key using HKDF with SHA-256, yielding to the event loop for non-blocking behavior.
- * @param algorithm The hash algorithm (e.g., "sha256").
- * @param masterKey The input key material.
- * @param salt The salt for HKDF extract phase.
- * @param info Optional context/info for HKDF expand phase.
- * @param keyLength The desired length of the derived key in bytes.
- * @returns A Promise resolving to the derived key as a Buffer.
- * @throws Error if the derivation fails or inputs are invalid.
- */
 async function hkdfAsync(
   algorithm: string,
   masterKey: Buffer,
@@ -243,40 +206,36 @@ async function hkdfAsync(
   info: Buffer,
   keyLength: number
 ): Promise<Buffer> {
-  if (!["sha256"].includes(algorithm)) {
+  if (!["sha256"].includes(algorithm))
     throw new Error(`Unsupported HKDF algorithm: ${algorithm}`);
-  }
-  if (!masterKey || !Buffer.isBuffer(masterKey) || masterKey.length === 0) {
-    throw new Error("Invalid master key");
-  }
-  if (!salt || !Buffer.isBuffer(salt) || salt.length === 0) {
-    throw new Error("Invalid salt");
-  }
-  if (!info || !Buffer.isBuffer(info)) {
-    throw new Error("Invalid info parameter");
-  }
-  if (keyLength <= 0 || keyLength > 255 * 32) {
-    // SHA-256 produces 32-byte output, max key length is 255 * hash length
-    throw new Error(`Invalid key length: ${keyLength}`);
-  }
 
-  // HKDF-Extract: Generate PRK (Pseudo-Random Key)
-  await setImmediatePromise(); // Yield to event loop
+  if (!masterKey || !Buffer.isBuffer(masterKey) || masterKey.length === 0)
+    throw new Error("Invalid master key");
+
+  if (!salt || !Buffer.isBuffer(salt) || salt.length === 0)
+    throw new Error("Invalid salt");
+
+  if (!info || !Buffer.isBuffer(info))
+    throw new Error("Invalid info parameter");
+
+  if (keyLength <= 0 || keyLength > 255 * 32)
+    throw new Error(`Invalid key length: ${keyLength}`);
+
+  await setImmediatePromise();
   const prk: Buffer = createHmac(algorithm, salt).update(masterKey).digest();
 
-  // HKDF-Expand: Generate output key
   let t: Buffer = Buffer.alloc(0);
-  let okm: Buffer = Buffer.alloc(0); // Output Keying Material
-  const hashLength = 32; // SHA-256 output size
+  let okm: Buffer = Buffer.alloc(0);
+  const hashLength = 32;
   const iterations = Math.ceil(keyLength / hashLength);
 
   for (let i = 0; i < iterations; i++) {
-    await setImmediatePromise(); // Yield to event loop
+    await setImmediatePromise();
 
     const hmac = createHmac(algorithm, prk);
     hmac.update(t);
     if (info.length > 0) hmac.update(info);
-    hmac.update(Buffer.from([i + 1])); // 1-based counter
+    hmac.update(Buffer.from([i + 1]));
     t = hmac.digest();
 
     okm = Buffer.concat([okm, t]);
