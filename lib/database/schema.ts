@@ -17,21 +17,15 @@
 */
 
 import { model, models, Schema } from "mongoose";
-import Config from "@/lib/constant";
 
 // Interfaces
 interface User {
+  _id?: string;
   username: string;
   password?: string;
   blockPassword?: string;
   lastPasswordChange?: Date;
   checksum?: string;
-  timestamp?: Date;
-}
-
-interface Token {
-  username: string;
-  token: string;
   timestamp?: Date;
 }
 
@@ -84,22 +78,6 @@ const DBUserSchema = new Schema<User>({
   },
   checksum: {
     type: String,
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-const DBTokenSchema = new Schema<Token>({
-  username: {
-    type: String,
-    required: true,
-    unique: true,
-  },
-  token: {
-    type: String,
-    required: true,
   },
   timestamp: {
     type: Date,
@@ -192,19 +170,11 @@ const DBExpSchema = new Schema<Expenditure>({
 
 // Models
 const UserSchema = models.Users || model("Users", DBUserSchema);
-const TokenSchema = models.Tokens || model("Tokens", DBTokenSchema);
 const MiscSchema = models.Misc || model("Misc", DBMiscSchema);
 const PageSchema = models.Page || model("Page", DBPageSchema);
 const NotesSchema = models.Notes || model("Notes", DBNotesSchema);
 const ExpSchema = models.Expenditure || model("Expenditure", DBExpSchema);
 
-export {
-  UserSchema,
-  TokenSchema,
-  MiscSchema,
-  PageSchema,
-  NotesSchema,
-  ExpSchema,
-};
+export { UserSchema, MiscSchema, PageSchema, NotesSchema, ExpSchema };
 
 export type { User, Page, Misc, Notes, Expenditure };

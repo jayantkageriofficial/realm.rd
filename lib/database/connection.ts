@@ -17,25 +17,41 @@
 */
 
 import mongoose from "mongoose";
+import { createClient } from "redis";
 import { error, event, ready } from "next/dist/build/output/log";
 import Config from "@/lib/constant";
 import { MiscSchema } from "@/lib/database/schema";
 
 const start = Date.now();
 
+type RedisClient = ReturnType<typeof createClient>;
+
 declare global {
-  var mongoose: {
-    conn: mongoose.Connection | null;
-    promise: Promise<mongoose.Connection> | null;
+  var database: {
+    mongoose: {
+      conn: mongoose.Connection | null;
+      promise: Promise<mongoose.Connection> | null;
+    };
+    redis: {
+      client: RedisClient | null;
+      promise: Promise<RedisClient> | null;
+    };
+    initialized: boolean;
   };
 }
 
-if (!global.mongoose) global.mongoose = { conn: null, promise: null };
+if (!global.database) {
+  global.database = {
+    mongoose: { conn: null, promise: null },
+    redis: { client: null, promise: null },
+    initialized: false,
+  };
+}
 
-async function dbConnect(): Promise<mongoose.Connection> {
-  if (global.mongoose.conn) return global.mongoose.conn;
+async function mongoConnect(): Promise<mongoose.Connection> {
+  if (global.database.mongoose.conn) return global.database.mongoose.conn;
 
-  if (!global.mongoose.promise) {
+  if (!global.database.mongoose.promise) {
     try {
       const tempConnection = await mongoose.connect(Config.MONGODB_URI, {
         serverSelectionTimeoutMS: 5000,
@@ -54,32 +70,111 @@ async function dbConnect(): Promise<mongoose.Connection> {
         throw new Error("Database connections are blocked");
       }
 
-      global.mongoose.promise = Promise.resolve(tempConnection.connection);
+      global.database.mongoose.promise = Promise.resolve(
+        tempConnection.connection
+      );
     } catch (e) {
       await mongoose.disconnect();
-      global.mongoose.promise = null;
+      global.database.mongoose.promise = null;
       error("Mongoose connection error or block detected:", e);
       throw e;
     }
   }
 
   try {
-    global.mongoose.conn = await global.mongoose.promise;
+    global.database.mongoose.conn = await global.database.mongoose.promise;
   } catch (e) {
-    global.mongoose.promise = null;
+    global.database.mongoose.promise = null;
     error("Mongoose connection error:", e);
     throw e;
   }
 
-  return global.mongoose.conn;
+  return global.database.mongoose.conn;
+}
+
+async function redisConnect(): Promise<RedisClient> {
+  if (global.database.redis.client && global.database.redis.client.isOpen) {
+    return global.database.redis.client;
+  }
+
+  if (!global.database.redis.promise) {
+    try {
+      const client = createClient({
+        url: Config.REDIS_URI,
+        socket: {
+          connectTimeout: 5000,
+        },
+      });
+
+      client.on("error", (err) => {
+        error("Redis Client Error:", err);
+      });
+
+      await client.connect();
+      global.database.redis.promise = Promise.resolve(client);
+    } catch (e) {
+      global.database.redis.promise = null;
+      error("Redis connection error:", e);
+      throw e;
+    }
+  }
+
+  try {
+    global.database.redis.client = await global.database.redis.promise;
+  } catch (e) {
+    global.database.redis.promise = null;
+    error("Redis connection error:", e);
+    throw e;
+  }
+
+  return global.database.redis.client;
+}
+
+async function dbConnect(): Promise<{
+  mongo: mongoose.Connection;
+  redis: RedisClient;
+}> {
+  try {
+    const [mongoConn, redisConn] = await Promise.all([
+      mongoConnect(),
+      redisConnect(),
+    ]);
+
+    return {
+      mongo: mongoConn,
+      redis: redisConn,
+    };
+  } catch (e) {
+    error("Database connection error:", e);
+    throw e;
+  }
+}
+
+async function initializeConnections(): Promise<void> {
+  if (global.database.initialized) return;
+
+  try {
+    await dbConnect();
+    const duration = Date.now() - start;
+
+    event(`MongoDB connected in ${duration}ms`);
+    event(`Redis connected in ${duration}ms`);
+
+    global.database.initialized = true;
+  } catch (err) {
+    error("Database connection error:", err);
+    throw err;
+  }
 }
 
 async function closeAllConnections(): Promise<boolean> {
+  let success = true;
+
   try {
-    if (global.mongoose.conn) {
-      await global.mongoose.conn.close(true);
-      global.mongoose.conn = null;
-      global.mongoose.promise = null;
+    if (global.database.mongoose.conn) {
+      await global.database.mongoose.conn.close(true);
+      global.database.mongoose.conn = null;
+      global.database.mongoose.promise = null;
     }
 
     await mongoose.disconnect();
@@ -100,35 +195,76 @@ async function closeAllConnections(): Promise<boolean> {
       }
     });
 
-    ready("All MongoDB connections forcefully closed");
-    return true;
+    ready("All MongoDB connections closed");
   } catch (e) {
     error("Error closing MongoDB connections:", e);
-    return false;
-  }
-}
-
-function isConnected(): boolean {
-  if (global.mongoose.conn?.readyState === 1) return true;
-  for (const conn of mongoose.connections) {
-    if (conn.readyState === 1) return true;
+    success = false;
   }
 
-  return false;
-}
-
-dbConnect()
-  .then(() => event(`Connected to MongoDB in ${Date.now() - start}ms`))
-  .catch((err) => error("MongoDB connection error:", err));
-
-["SIGTERM", "SIGINT"].forEach((signal) => {
-  process.on(signal as NodeJS.Signals, async () => {
-    if (global.mongoose.conn) {
-      await closeAllConnections();
-      ready("MongoDB disconnected on app termination");
+  try {
+    if (global.database.redis.client && global.database.redis.client.isOpen) {
+      await global.database.redis.client.quit();
+      global.database.redis.client = null;
+      global.database.redis.promise = null;
     }
+
+    ready("All Redis connections closed");
+  } catch (e) {
+    error("Error closing Redis connections:", e);
+    success = false;
+  }
+
+  global.database.initialized = false;
+  return success;
+}
+
+function isConnected(): {
+  mongo: boolean;
+  redis: boolean;
+  both: boolean;
+  initialized: boolean;
+} {
+  const mongoConnected =
+    global.database.mongoose.conn?.readyState === 1 ||
+    mongoose.connections.some((conn) => conn.readyState === 1);
+
+  const redisConnected = global.database.redis.client?.isOpen === true;
+
+  return {
+    mongo: mongoConnected,
+    redis: redisConnected,
+    both: mongoConnected && redisConnected,
+    initialized: global.database.initialized,
+  };
+}
+
+async function getMongoConnection(): Promise<mongoose.Connection> {
+  if (!global.database.initialized) await initializeConnections();
+  return await mongoConnect();
+}
+
+async function getRedisConnection(): Promise<RedisClient> {
+  if (!global.database.initialized) await initializeConnections();
+  return await redisConnect();
+}
+
+if (process.env.NEXT_RUNTIME === "nodejs") {
+  initializeConnections().catch((err) => {
+    error("Failed to initialize database connections:", err);
+  });
+}
+
+["SIGTERM", "SIGINT", "SIGUSR2"].forEach((signal) => {
+  process.on(signal as NodeJS.Signals, async () => {
+    await closeAllConnections();
+    ready("All database connections closed on app termination");
   });
 });
 
 export default dbConnect;
-export { closeAllConnections, isConnected };
+export {
+  closeAllConnections,
+  isConnected,
+  getMongoConnection,
+  getRedisConnection,
+};

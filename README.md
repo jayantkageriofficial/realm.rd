@@ -85,6 +85,8 @@ pnpm dev
 
 - 💾 `MONGODB_URI` (**required**): This variable specifies the URI to the MongoDB database.
 
+- 🗃️ `REDIS_URI` (**required**): This variable specifies the URI to the Redis database.
+
 - 🤖 `TG_BOT_TOKEN` (_optional_): This variable specifies the Telegram Bot Token, which is used for sending alerts.
 
 - 💬 `TG_CHAT_ID` (_optional_): This variable specifies the Telegram Chat ID, which is used for sending alerts.

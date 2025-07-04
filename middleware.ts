@@ -19,7 +19,7 @@
 import { cookies, headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import Config from "@/lib/constant";
-import { isConnected } from "@/lib/database/connection";
+import { isConnected, getRedisConnection } from "@/lib/database/connection";
 import { verify as verifyToken } from "@/lib/operations/auth";
 import { getClientIp } from "@/lib/operations/ip";
 
@@ -30,10 +30,9 @@ export const config = {
   runtime: "nodejs",
 };
 
-async function verify(): Promise<boolean> {
+async function verify(ip: string): Promise<boolean> {
   const cookieStore = await cookies();
   const cookie = cookieStore.get("session");
-  const ip = getClientIp(await headers());
   if (!cookie?.value) return false;
   const auth = await verifyToken(cookie.value, ip || "");
   if (auth?.username) return true;
@@ -42,7 +41,7 @@ async function verify(): Promise<boolean> {
 }
 
 export async function middleware(req: NextRequest) {
-  const ping = isConnected();
+  const ping = isConnected().both;
   const locked = req.nextUrl.pathname === "/locked";
 
   if (!ping)
@@ -52,12 +51,23 @@ export async function middleware(req: NextRequest) {
 
   if (locked) return NextResponse.redirect(Config.DOMAIN);
 
-  const verification = await verify();
+  const ip = getClientIp(await headers()) || "";
+  const verification = await verify(ip);
+
   const login = req.nextUrl.pathname === "/auth/login";
-  if (!verification && !login)
-    return NextResponse.redirect(
-      `${Config.DOMAIN}/auth/login?path=${req.nextUrl.pathname}`
-    );
+  if (!verification) {
+    const redisConn = await getRedisConnection();
+    const key = `rate_limit:${ip}`;
+
+    const current = await redisConn.incr(key);
+    if (current === 1) await redisConn.expire(key, 60);
+    if (current > 100) return new NextResponse(null, { status: 429 });
+
+    if (!login)
+      return NextResponse.redirect(
+        `${Config.DOMAIN}/auth/login?path=${req.nextUrl.pathname}`
+      );
+  }
   if (verification && login) return NextResponse.redirect(Config.DOMAIN);
   return NextResponse.next();
 }

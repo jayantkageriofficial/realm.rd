@@ -43,6 +43,7 @@ const Config = {
   CIPHER_ENCODING: "hex" as BufferEncoding,
 
   MONGODB_URI: process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/",
+  REDIS_URI: process.env.REDIS_URI || "redis://127.0.1:6379",
 
   TG_BOT_TOKEN: process.env.TG_BOT_TOKEN || "",
   TG_CHAT_ID: process.env.TG_CHAT_ID || "",

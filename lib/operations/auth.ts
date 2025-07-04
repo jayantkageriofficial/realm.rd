@@ -19,13 +19,11 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import Config from "@/lib/constant";
-import { closeAllConnections } from "@/lib/database/connection";
 import {
-  MiscSchema,
-  TokenSchema,
-  type User,
-  UserSchema,
-} from "@/lib/database/schema";
+  closeAllConnections,
+  getRedisConnection,
+} from "@/lib/database/connection";
+import { MiscSchema, type User, UserSchema } from "@/lib/database/schema";
 import { log } from "@/lib/operations/logs";
 
 export interface JwtPayload {
@@ -149,21 +147,11 @@ async function token({
     subject: Config.DOMAIN,
   });
 
-  const db = await TokenSchema.findOneAndUpdate(
-    { username: user.username },
-    {
-      username: user.username,
-      token: gen,
-      timestamp: new Date(),
-    },
-    {
-      upsert: true,
-      new: true,
-      setDefaultsOnInsert: true,
-    }
-  );
-
-  return db.token;
+  const redis = await getRedisConnection();
+  await redis.set(await hashString(user.username), gen, {
+    EX: Config.SESSION_DURATION * 60,
+  });
+  return gen;
 }
 
 export async function verify(
@@ -204,7 +192,7 @@ export async function verify(
     )
       return null;
 
-    const signed = new Date((payload.iat as number) * 1000 || ""); // get signed date
+    const signed = new Date((payload.iat as number) * 1000 || "");
 
     if (Date.now() - signed.valueOf() > 60000 * Config.SESSION_DURATION)
       return null;
@@ -214,12 +202,8 @@ export async function verify(
     });
     if (!user) return null;
 
-    if (
-      !(await TokenSchema.findOne({
-        token,
-        username: payload.username,
-      }))
-    )
+    const redis = await getRedisConnection();
+    if ((await redis.get(await hashString(user.username))) !== token)
       return null;
 
     if (new Date(user.lastPasswordChange).valueOf() > signed.valueOf())
@@ -243,6 +227,8 @@ export async function login(
     username: await hashString(username.toLowerCase()),
   });
   if (!user) return null;
+  const redis = await getRedisConnection();
+  const checksum = await redis.get((user._id || "").toString());
 
   const check = await bcrypt.compare(
     await hashString(password),
@@ -260,7 +246,7 @@ export async function login(
     user.checksum || ""
   );
 
-  if (force || !verify) {
+  if (force || !verify || checksum !== user.checksum) {
     await new MiscSchema({
       blocked: true,
     }).save();
@@ -294,7 +280,9 @@ export async function logout(
 ): Promise<boolean | null> {
   const verification = await verify(token, ip);
   if (!verification) return null;
-  await TokenSchema.findOneAndDelete({ token });
+  const redis = await getRedisConnection();
+  await redis.del(await hashString(verification.username));
+
   return true;
 }
 
@@ -314,6 +302,7 @@ export async function register(
   )
     return null;
 
+  const redis = await getRedisConnection();
   const password = Math.floor(Math.random() * 1e12).toString();
   const pass = await bcrypt.hash(
     await hashString(password),
@@ -342,6 +331,7 @@ export async function register(
     checksum,
   }).save();
 
+  await redis.set(newUser._id.toString(), checksum);
   return {
     user: {
       username: username.toLowerCase(),
@@ -363,6 +353,8 @@ export async function changePassword(
   if (!user) return null;
   const check = await bcrypt.compare(oldpassword, user.password || "");
   if (!check) return null;
+
+  const redis = await getRedisConnection();
   const pass = await bcrypt.hash(
     await hashString(newpassword),
     await bcrypt.genSalt(Config.SALT_ROUNDS)
@@ -382,6 +374,7 @@ export async function changePassword(
     date
   );
 
+  await redis.set(user._id.toString(), checksum);
   user = await UserSchema.findByIdAndUpdate(user._id, {
     password: pass,
     lastPasswordChange: getDate(date),
@@ -396,7 +389,7 @@ export async function changeLockPassword(
   oldpassword: string,
   newpassword: string,
   ip: string
-): Promise<boolean | null> {
+): Promise<string | null> {
   if (newpassword.length < 8) return null;
   const user = await UserSchema.findOne({
     username: username.toLowerCase(),
@@ -404,6 +397,8 @@ export async function changeLockPassword(
   if (!user) return null;
   const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
   if (!check) return null;
+
+  const redis = await getRedisConnection();
   const pass = await bcrypt.hash(
     await hashString(newpassword),
     await bcrypt.genSalt(Config.SALT_ROUNDS)
@@ -416,6 +411,7 @@ export async function changeLockPassword(
     getDate(date)
   );
 
+  await redis.set(user._id.toString(), checksum);
   await UserSchema.findByIdAndUpdate(user._id, {
     blockPassword: pass,
     lastPasswordChange: getDate(date),
@@ -429,7 +425,7 @@ export async function changeLockPassword(
     new Date()
   );
 
-  return true;
+  return await token({ user, ip });
 }
 
 export async function getAllUsers(): Promise<User[]> {
@@ -443,6 +439,15 @@ export async function deleteUser(username: string): Promise<boolean> {
     }))
   )
     return false;
+
+  const redis = await getRedisConnection();
+  await redis.del(
+    (
+      await UserSchema.findOne({
+        username: await hashString(username.toLowerCase()),
+      })
+    )._id.toString()
+  );
   return Boolean(
     await UserSchema.findOneAndDelete({
       username: await hashString(username.toLowerCase()),

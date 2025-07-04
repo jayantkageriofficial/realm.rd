@@ -60,8 +60,13 @@ export async function ChangeLockPassword(
   old: string,
   newPwd: string
 ): Promise<boolean | null> {
+  const cookieStore = await cookies();
   const user: User = (await verify()) as User;
   const ip = getClientIp(await headers());
   const res = await changeLockPassword(user.username, old, newPwd, ip || "");
-  return res;
+  if (res) {
+    cookieStore.set("session", res);
+    return true;
+  }
+  return null;
 }
