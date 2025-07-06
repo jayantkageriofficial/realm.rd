@@ -28,8 +28,6 @@
 
 ❤️‍🔥 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
----
-
 ## 🧠 Description
 
 **REALM.RD** is a minimal, self-hostable platform designed to **log daily thoughts**, **capture notes**, and **track expenses** — all under one unified interface.
@@ -37,8 +35,6 @@
 Whether you're jotting down a private entry, scribbling plans, or managing your daily budget, REALM.RD provides the tools you need to do it quickly, securely, and without distractions.
 
 > 🗒️ _Daily Diary_ · 🧾 _Notekeeping_ · 💸 _Book of Expenditure_
-
----
 
 ## 🚀 Getting Started
 
@@ -70,8 +66,6 @@ pnpm dev
 - 📊 **Export to Excel** — Save the expense entries as `.xlsx`.
 - 🛎️ **Telegram Notifications** _(optional)_ — Instant alerts via bot integration.
 - 🧱 **Fully Modular Design** — Easily extensible and componentized.
-
----
 
 ## 🗺️ Environment Variables
 

@@ -26,15 +26,15 @@ import Config from "@/lib/constant";
 
 const setImmediatePromise = promisify(setImmediate);
 
-function secureZeroBuffer(buffer: Buffer): void {
+const secureZeroBuffer = (buffer: Buffer): void => {
   if (buffer && buffer.length > 0) buffer.fill(0);
-}
+};
 
-function secureZeroUint8Array(array: Uint8Array): void {
+const secureZeroUint8Array = (array: Uint8Array): void => {
   if (array && array.length > 0) array.fill(0);
-}
+};
 
-function getAppDataDirectory(): string {
+const getAppDataDirectory = (): string => {
   const platform = process.platform;
   const homeDir = os.homedir();
 
@@ -47,7 +47,7 @@ function getAppDataDirectory(): string {
     default:
       return path.join(homeDir, ".config", "realm");
   }
-}
+};
 
 const APP_DATA_DIR = getAppDataDirectory();
 const TEMP_DATA_DIR = path.join(os.tmpdir(), "realm");
@@ -244,26 +244,6 @@ async function hkdfAsync(
   return okm.slice(0, keyLength);
 }
 
-function isValidHexString(str: string): boolean {
-  if (!str || typeof str !== "string") return false;
-  str = str.trim();
-  if (str.length % 2 !== 0) return false;
-  return /^[0-9a-fA-F]+$/.test(str);
-}
-
-function isValidBase64String(str: string): boolean {
-  if (!str || typeof str !== "string") return false;
-  str = str.trim();
-  const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
-  return base64Regex.test(str) && str.length % 4 === 0;
-}
-
-function detectEncoding(str: string): "hex" | "base64" | "unknown" {
-  if (isValidHexString(str)) return "hex";
-  if (isValidBase64String(str)) return "base64";
-  return "unknown";
-}
-
 async function encryptData(data: string): Promise<string> {
   if (!data || typeof data !== "string") {
     throw new Error("Invalid input data for encryption.");
@@ -289,11 +269,15 @@ async function encryptData(data: string): Promise<string> {
     );
 
     const cipher = createCipheriv(Config.CIPHER_ALGORITHM, derivedKey, iv);
-    let encrypted = cipher.update(data, "utf8", "hex");
-    encrypted += cipher.final("hex");
+    let encrypted = cipher.update(data, "utf8", Config.CIPHER_ENCODING);
+    encrypted += cipher.final(Config.CIPHER_ENCODING);
 
-    const combined = Buffer.concat([salt, iv, Buffer.from(encrypted, "hex")]);
-    return combined.toString("hex");
+    const combined = Buffer.concat([
+      salt,
+      iv,
+      Buffer.from(encrypted, Config.CIPHER_ENCODING),
+    ]);
+    return combined.toString(Config.CIPHER_ENCODING);
   } catch (error: unknown) {
     throw new Error(
       `Encryption failed: ${
@@ -320,34 +304,13 @@ async function decryptData(encryptedData: string): Promise<string> {
     masterKey = await initializeMasterKey();
 
     const cleanedData = encryptedData.trim();
-    const encoding = detectEncoding(cleanedData);
 
-    let combined: Buffer;
-
-    switch (encoding) {
-      case "hex":
-        combined = Buffer.from(cleanedData, "hex");
-        break;
-      case "base64":
-        combined = Buffer.from(cleanedData, "base64");
-        break;
-      default:
-        const hasBase64Chars = /[+/=]/.test(cleanedData);
-        const hasHexChars = /^[0-9a-fA-F\s]*$/.test(cleanedData);
-
-        throw new Error(
-          `Unable to determine encoding for encrypted data. ` +
-            `Detected: ${encoding}. ` +
-            `Has Base64 chars (+/=): ${hasBase64Chars}. ` +
-            `Has only hex chars: ${hasHexChars}. `
-        );
-    }
+    const combined = Buffer.from(cleanedData, Config.CIPHER_ENCODING);
 
     const minSize = 32 + Config.CIPHER_IV_SIZE;
     if (combined.length < minSize) {
       throw new Error(
-        `Invalid encrypted data format: ${combined.length} bytes, expected at least ${minSize} bytes. ` +
-          `Encoding used: ${encoding}.`
+        `Invalid encrypted data format: ${combined.length} bytes, expected at least ${minSize} bytes`
       );
     }
 

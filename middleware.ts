@@ -43,6 +43,7 @@ async function verify(ip: string): Promise<boolean> {
 export async function middleware(req: NextRequest) {
   const ping = isConnected().both;
   const locked = req.nextUrl.pathname === "/locked";
+  const logout = req.nextUrl.pathname === "/auth/logout";
 
   if (!ping)
     return locked
@@ -61,13 +62,16 @@ export async function middleware(req: NextRequest) {
 
     const current = await redisConn.incr(key);
     if (current === 1) await redisConn.expire(key, 60);
-    if (current > 100) return new NextResponse(null, { status: 429 });
+    if (current > 20) return new NextResponse(null, { status: 429 });
 
-    if (!login)
+    if (!login || logout)
       return NextResponse.redirect(
-        `${Config.DOMAIN}/auth/login?path=${req.nextUrl.pathname}`
+        `${Config.DOMAIN}/auth/login?path=${
+          logout ? "/" : req.nextUrl.pathname
+        }`
       );
+
+    if (verification && login) return NextResponse.redirect(Config.DOMAIN);
+    return NextResponse.next();
   }
-  if (verification && login) return NextResponse.redirect(Config.DOMAIN);
-  return NextResponse.next();
 }
