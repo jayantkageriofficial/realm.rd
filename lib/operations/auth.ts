@@ -24,7 +24,7 @@ import {
   getRedisConnection,
 } from "@/lib/database/connection";
 import { MiscSchema, type User, UserSchema } from "@/lib/database/schema";
-import { cleanup } from "@/lib/operations/encryption";
+import { CryptoManager } from "@/lib/operations/encryption";
 import { log } from "@/lib/operations/logs";
 
 export interface JwtPayload {
@@ -242,7 +242,7 @@ export async function login(
       blocked: true,
     }).save();
     await closeAllConnections();
-    await cleanup();
+    CryptoManager.shutdown();
     await log(
       "lock",
       `The application has been locked as per the request of the user  __**${username.toLowerCase()} via ${
@@ -274,7 +274,7 @@ export async function logout(
   if (!verification) return null;
   const redis = await getRedisConnection();
   await redis.del(await hashString(verification.username));
-
+  CryptoManager.shutdown();
   return true;
 }
 

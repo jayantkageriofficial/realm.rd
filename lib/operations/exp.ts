@@ -18,11 +18,12 @@
 
 import { customAlphabet } from "nanoid";
 import { type Expenditure, ExpSchema, type User } from "@/lib/database/schema";
-import { decryptData, encryptData } from "@/lib/operations/encryption";
+import { CryptoManager } from "@/lib/operations/encryption";
 
 export async function create(month: string, content: string, user: User) {
-  const name = await encryptData(month);
-  const encrypted = await encryptData(content);
+  const crypto = new CryptoManager();
+  const name = await crypto.encryptData(month);
+  const encrypted = await crypto.encryptData(content);
   const page = await ExpSchema.create({
     id: customAlphabet("1234567890abcdef", 9)(),
     month: name,
@@ -37,8 +38,9 @@ export async function get(id: string, user: User): Promise<Expenditure | null> {
     id,
   });
   if (!note || note.user?.username !== user.username) return null;
-  const month = await decryptData(note.month);
-  const content = await decryptData(note.content);
+  const crypto = new CryptoManager();
+  const month = await crypto.decryptData(note.month);
+  const content = await crypto.decryptData(note.content);
   return {
     id: note.id,
     month,
@@ -82,8 +84,9 @@ export async function edit(
   });
   if (!exp || exp.user?.username !== user.username) return null;
 
-  const name = await encryptData(title);
-  const encrypted = await encryptData(content);
+  const crypto = new CryptoManager();
+  const name = await crypto.encryptData(title);
+  const encrypted = await crypto.encryptData(content);
   const res = await ExpSchema.findByIdAndUpdate(exp._id, {
     month: name,
     content: encrypted,

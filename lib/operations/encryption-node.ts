@@ -1,3 +1,6 @@
+// The following is a secure encryption module for Node.js,
+// but it is not compatible with Next.js due to its use of Node.js-specific APIs.
+
 /*
  realm.rd, Scribble the plans, spill the thoughts.
  Copyright (C) 2025 Jayant Hegde Kageri <https://github.com/jayantkageri/>
@@ -21,21 +24,17 @@ import path from "path";
 import fs from "fs/promises";
 import { promisify } from "util";
 import sodium from "libsodium-wrappers";
-import {
-  createHmac,
-  createCipheriv,
-  createDecipheriv,
-  timingSafeEqual,
-} from "crypto";
+import { createCipheriv, createDecipheriv, timingSafeEqual } from "crypto";
 import { lock, unlock } from "proper-lockfile";
 import Config from "@/lib/constant";
 
+const ENCRYPTION_MODULE: string = "realm-encryption-v1";
 const CIPHER_ALGORITHM: string = Config.CIPHER_ALGORITHM;
 const CIPHER_KEY_SIZE: number = Config.CIPHER_KEY_SIZE;
 const CIPHER_IV_SIZE: number = Config.CIPHER_IV_SIZE;
 const CIPHER_ENCODING: BufferEncoding = Config.CIPHER_ENCODING;
 const SALT_LENGTH: number = 32;
-const MASTER_KEY_LENGTH: number = 32;
+const MASTER_KEY_LENGTH: number = (sodium.crypto_kdf_KEYBYTES as number) || 32;
 
 class CryptoError extends Error {
   constructor(message: string, cause?: unknown) {
@@ -55,14 +54,28 @@ class FileSystemError extends Error {
 
 class InputValidator {
   static validateFilePath(filePath: string): string {
+    if (!filePath || typeof filePath !== "string") {
+      throw new FileSystemError("Invalid file path");
+    }
     const normalized = path.resolve(filePath);
-    if (normalized.includes("..") || normalized.includes("\0"))
+    if (normalized.includes("..") || normalized.includes("\0")) {
       throw new FileSystemError("Invalid file path detected");
+    }
     return normalized;
+  }
+
+  static validateEncryptionData(data: string): void {
+    if (!data || typeof data !== "string") {
+      throw new CryptoError("Invalid encryption input");
+    }
+    if (data.length > 1024 * 1024) {
+      throw new CryptoError("Data too large for encryption");
+    }
   }
 }
 
 class FileSystem {
+  private static fileOperationLocks = new Map<string, Promise<any>>();
   private readonly appDataDir: string;
   private readonly tempDataDir: string;
   private readonly masterKeyPath: string;
@@ -136,8 +149,9 @@ class FileSystem {
         );
         await execAsync(`attrib +H +S "${validatedPath}"`);
         const { stdout } = await execAsync(`icacls "${validatedPath}"`);
-        if (!stdout.includes("%USERNAME%"))
+        if (!stdout.includes("%USERNAME%")) {
           throw new Error("Failed to verify Windows permissions");
+        }
       } else {
         await fs.chmod(validatedPath, 0o600);
         if (process.platform === "linux") {
@@ -160,8 +174,9 @@ class FileSystem {
     } catch {
       try {
         await fs.mkdir(validatedPath, { recursive: true, mode: 0o700 });
-        if (process.platform !== "win32") await fs.chmod(validatedPath, 0o700);
-        else {
+        if (process.platform !== "win32") {
+          await fs.chmod(validatedPath, 0o700);
+        } else {
           const { exec } = await import("child_process");
           const execAsync = promisify(exec);
           await execAsync(
@@ -185,11 +200,12 @@ class FileSystem {
           return this.withFileLock(filePath, async () => {
             try {
               const stats = await fs.stat(filePath);
-              for (let i = 0; i < 3; i++)
-                await fs.writeFile(
-                  filePath,
-                  Buffer.from(sodium.randombytes_buf(stats.size))
+              for (let i = 0; i < 3; i++) {
+                const randomData = Buffer.from(
+                  sodium.randombytes_buf(stats.size)
                 );
+                await fs.writeFile(filePath, randomData);
+              }
               await fs.unlink(filePath);
             } catch {}
           });
@@ -238,11 +254,13 @@ class MemoryUtils {
     algorithm: string,
     purpose: string = "encrypt"
   ): Buffer {
-    return Buffer.concat([
-      Buffer.from(module, "utf8"),
-      Buffer.from(algorithm, "utf8"),
-      Buffer.from([CIPHER_KEY_SIZE]),
-    ]);
+    const contextData = `${module}:${algorithm}:${purpose}:${Date.now()}:v2`;
+    if (typeof sodium.crypto_generichash === "function") {
+      return Buffer.from(
+        sodium.crypto_generichash(8, Buffer.from(contextData, "utf8"))
+      );
+    }
+    return Buffer.from(contextData.slice(0, 8), "utf8");
   }
 }
 
@@ -260,14 +278,28 @@ class SecureMemoryManager {
     if (size <= 0 || size > 1024 * 1024)
       throw new CryptoError("Invalid secure memory allocation size");
     let buffer: Uint8Array;
-    buffer = new Uint8Array(size);
+    if ((sodium as any).sodium_malloc)
+      buffer = (sodium as any).sodium_malloc(size);
+    else buffer = new Uint8Array(size);
     SecureMemoryManager.allocatedBuffers.add(buffer);
     return buffer;
+  }
+  static mlock(buffer: Uint8Array): void {
+    if ((sodium as any).sodium_mlock) {
+      (sodium as any).sodium_mlock(buffer);
+    }
+  }
+  static munlock(buffer: Uint8Array): void {
+    if ((sodium as any).sodium_munlock) {
+      (sodium as any).sodium_munlock(buffer);
+    }
   }
   static free(buffer: Uint8Array): void {
     if (!buffer || buffer.length === 0) return;
     SecureMemoryManager.allocatedBuffers.delete(buffer);
-    MemoryUtils.secureZeroUint8Array(buffer);
+    this.munlock(buffer);
+    if ((sodium as any).sodium_free) (sodium as any).sodium_free(buffer);
+    else MemoryUtils.secureZeroUint8Array(buffer);
   }
   static emergencyCleanup() {
     for (const buffer of SecureMemoryManager.allocatedBuffers) {
@@ -279,50 +311,8 @@ class SecureMemoryManager {
   }
 }
 
-async function hkdfAsync(
-  algorithm: string,
-  masterKey: Buffer,
-  salt: Buffer,
-  info: Buffer,
-  keyLength: number
-): Promise<Buffer> {
-  if (!masterKey || !Buffer.isBuffer(masterKey) || masterKey.length === 0)
-    throw new CryptoError("Invalid master key");
-  if (!salt || !Buffer.isBuffer(salt) || salt.length === 0)
-    throw new CryptoError("Invalid salt");
-  if (!info || !Buffer.isBuffer(info))
-    throw new CryptoError("Invalid info parameter");
-
-  const hashLength =
-    algorithm === "sha256" ? 32 : algorithm === "sha384" ? 48 : 64;
-  const maxKeyLength = 255 * hashLength;
-
-  if (keyLength <= 0 || keyLength > maxKeyLength)
-    throw new CryptoError(
-      `Invalid key length: ${keyLength}. Max for ${algorithm}: ${maxKeyLength}`
-    );
-
-  const prk: Buffer = createHmac(algorithm, salt).update(masterKey).digest();
-  let t: Buffer = Buffer.alloc(0);
-  let okm: Buffer = Buffer.alloc(0);
-  const iterations = Math.ceil(keyLength / hashLength);
-
-  for (let i = 0; i < iterations; i++) {
-    const hmac = createHmac(algorithm, prk);
-    hmac.update(t);
-    if (info.length > 0) hmac.update(info);
-    hmac.update(Buffer.from([i + 1]));
-    t = hmac.digest();
-    okm = Buffer.concat([okm, t]);
-  }
-
-  MemoryUtils.secureZeroBuffer(prk);
-  MemoryUtils.secureZeroBuffer(t);
-
-  return okm.subarray(0, keyLength);
-}
-
 class CryptoManager {
+  static MAX_SUBKEY_ID: number = 2 ** 32 - 1;
   static isInitialized = false;
   static keyCache: Uint8Array | null = null;
   static keyCacheExpiry: number = 0;
@@ -334,22 +324,21 @@ class CryptoManager {
   }
 
   static async ensureSodiumReady(): Promise<void> {
-    await sodium.ready;
     if (!CryptoManager.isInitialized) {
       await SecureMemoryManager.initialize();
       CryptoManager.isInitialized = true;
     }
+    await sodium.ready;
     const requiredFunctions = [
       "randombytes_buf",
       "crypto_secretbox_easy",
       "crypto_secretbox_open_easy",
+      "crypto_pwhash",
+      "crypto_generichash",
     ];
     for (const func of requiredFunctions) {
-      if (typeof (sodium as any)[func] !== "function") {
-        throw new CryptoError(
-          "Required sodium function not available: " + func
-        );
-      }
+      if (!(sodium as any)[func])
+        throw new CryptoError("Required sodium function not available");
     }
   }
 
@@ -439,9 +428,10 @@ class CryptoManager {
   }
 
   async initializeMasterKey(): Promise<Buffer> {
-    if (CryptoManager.keyCache && Date.now() < CryptoManager.keyCacheExpiry)
+    if (CryptoManager.keyCache && Date.now() < CryptoManager.keyCacheExpiry) {
       return Buffer.from(CryptoManager.keyCache);
-
+    }
+    // On cache expiry/removal, securely free and munlock
     if (CryptoManager.keyCache) {
       SecureMemoryManager.free(CryptoManager.keyCache);
       CryptoManager.keyCache = null;
@@ -451,6 +441,8 @@ class CryptoManager {
       CryptoManager.keyCache = SecureMemoryManager.allocate(masterKey.length);
       CryptoManager.keyCache.set(masterKey);
       CryptoManager.keyCacheExpiry = Date.now() + CryptoManager.KEY_CACHE_TTL;
+      // Secure the cached key in RAM
+      SecureMemoryManager.mlock(CryptoManager.keyCache);
       const result = Buffer.from(masterKey);
       MemoryUtils.secureZeroBuffer(masterKey);
       return result;
@@ -474,22 +466,56 @@ class CryptoManager {
     }
   }
 
-  async hkdfKey(
+  async kdfAsync(
     masterKey: Buffer,
     salt: Buffer,
     info: Buffer,
-    keyLength: number
+    keyLength: number,
+    subkeyId: number = 1
   ): Promise<Buffer> {
-    return await hkdfAsync(
-      "sha256",
-      masterKey,
-      salt,
-      Buffer.alloc(0),
-      keyLength
-    );
+    await CryptoManager.ensureSodiumReady();
+    if (!masterKey || masterKey.length !== MASTER_KEY_LENGTH)
+      throw new CryptoError("Invalid master key");
+    if (!salt || salt.length !== SALT_LENGTH)
+      throw new CryptoError("Invalid salt length");
+    if (!info || info.length === 0)
+      throw new CryptoError("Invalid context info");
+    if (
+      !Number.isInteger(subkeyId) ||
+      subkeyId < 1 ||
+      subkeyId > CryptoManager.MAX_SUBKEY_ID
+    )
+      throw new CryptoError("Invalid subkey ID");
+    let derivedKey: Uint8Array | undefined;
+    try {
+      // Derive with pwhash (uses salt), then use KDF for context
+      const primaryKey = sodium.crypto_pwhash(
+        keyLength,
+        masterKey,
+        salt,
+        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_ALG_DEFAULT
+      );
+      derivedKey = sodium.crypto_kdf_derive_from_key(
+        keyLength,
+        subkeyId,
+        info.length >= 8
+          ? info.subarray(0, 8).toString("binary")
+          : "DefaultCtx",
+        primaryKey
+      );
+      MemoryUtils.secureZeroUint8Array(primaryKey);
+      return Buffer.from(derivedKey);
+    } catch (error) {
+      throw new CryptoError("Key derivation failed");
+    } finally {
+      if (derivedKey) MemoryUtils.secureZeroUint8Array(derivedKey);
+    }
   }
 
-  async encryptData(data: string): Promise<string> {
+  async encryptData(data: string, subkeyId: number = 1): Promise<string> {
+    InputValidator.validateEncryptionData(data);
     let masterKey: Buffer | null = null;
     let derivedKey: Buffer | null = null;
     let iv: Buffer | null = null;
@@ -499,11 +525,17 @@ class CryptoManager {
       masterKey = await this.initializeMasterKey();
       iv = Buffer.from(sodium.randombytes_buf(CIPHER_IV_SIZE));
       salt = Buffer.from(sodium.randombytes_buf(SALT_LENGTH));
-      derivedKey = await this.hkdfKey(
+      const contextInfo = MemoryUtils.createContext(
+        ENCRYPTION_MODULE,
+        CIPHER_ALGORITHM,
+        "encrypt"
+      );
+      derivedKey = await this.kdfAsync(
         masterKey,
         salt,
-        Buffer.alloc(0),
-        CIPHER_KEY_SIZE
+        contextInfo,
+        CIPHER_KEY_SIZE,
+        subkeyId
       );
       const cipher = createCipheriv(CIPHER_ALGORITHM, derivedKey, iv);
       let encrypted = cipher.update(data, "utf8", CIPHER_ENCODING);
@@ -525,14 +557,15 @@ class CryptoManager {
     }
   }
 
-  async decryptData(encryptedData: string): Promise<string> {
+  async decryptData(
+    encryptedData: string,
+    subkeyId: number = 1
+  ): Promise<string> {
     if (!encryptedData || typeof encryptedData !== "string")
       throw new CryptoError("Invalid encrypted data");
     let masterKey: Buffer | null = null;
     let derivedKey: Buffer | null = null;
     let combined: Buffer | null = null;
-    let salt: Buffer | null = null;
-    let iv: Buffer | null = null;
     try {
       await CryptoManager.ensureSodiumReady();
       masterKey = await this.initializeMasterKey();
@@ -540,14 +573,20 @@ class CryptoManager {
       const minSize = SALT_LENGTH + CIPHER_IV_SIZE;
       if (combined.length < minSize)
         throw new CryptoError("Invalid data format");
-      salt = combined.subarray(0, SALT_LENGTH);
-      iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + CIPHER_IV_SIZE);
+      const salt = combined.subarray(0, SALT_LENGTH);
+      const iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + CIPHER_IV_SIZE);
       const encrypted = combined.subarray(SALT_LENGTH + CIPHER_IV_SIZE);
-      derivedKey = await this.hkdfKey(
+      const contextInfo = MemoryUtils.createContext(
+        ENCRYPTION_MODULE,
+        CIPHER_ALGORITHM,
+        "encrypt"
+      );
+      derivedKey = await this.kdfAsync(
         masterKey,
         salt,
-        Buffer.alloc(0),
-        CIPHER_KEY_SIZE
+        contextInfo,
+        CIPHER_KEY_SIZE,
+        subkeyId
       );
       const decipher = createDecipheriv(CIPHER_ALGORITHM, derivedKey, iv);
       let decrypted = decipher.update(encrypted, undefined, "utf8");
@@ -560,13 +599,7 @@ class CryptoManager {
       if (masterKey) MemoryUtils.secureZeroBuffer(masterKey);
       if (derivedKey) MemoryUtils.secureZeroBuffer(derivedKey);
       if (combined) MemoryUtils.secureZeroBuffer(combined);
-      if (salt) MemoryUtils.secureZeroBuffer(salt);
-      if (iv) MemoryUtils.secureZeroBuffer(iv);
     }
-  }
-
-  async cleanup(): Promise<void> {
-    await this.fileSystem.cleanup();
   }
 
   static shutdown(): void {
@@ -591,10 +624,10 @@ process.on("SIGTERM", () => {
 });
 
 export {
-  CryptoManager,
   FileSystem,
+  CryptoManager,
   MemoryUtils,
-  InputValidator,
   CryptoError,
   FileSystemError,
+  SecureMemoryManager,
 };

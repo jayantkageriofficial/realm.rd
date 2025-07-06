@@ -18,7 +18,7 @@
 
 import { customAlphabet } from "nanoid";
 import { type Page, PageSchema, type User } from "@/lib/database/schema";
-import { decryptData, encryptData } from "@/lib/operations/encryption";
+import { CryptoManager } from "@/lib/operations/encryption";
 
 export async function create(
   title: string,
@@ -26,8 +26,9 @@ export async function create(
   date: Date,
   user: User
 ): Promise<Page> {
-  const name = await encryptData(title);
-  const encrypted = await encryptData(content);
+  const crypto = new CryptoManager();
+  const name = await crypto.encryptData(title);
+  const encrypted = await crypto.encryptData(content);
   const page = await PageSchema.create({
     id: customAlphabet("1234567890abcdef", 9)(),
     title: name,
@@ -43,8 +44,9 @@ export async function get(id: string, user: User): Promise<Page | null> {
     id,
   });
   if (!page || page.user?.username !== user.username) return null;
-  const title = await decryptData(page.title);
-  const content = await decryptData(page.content);
+  const crypto = new CryptoManager();
+  const title = await crypto.decryptData(page.title);
+  const content = await crypto.decryptData(page.content);
   return {
     id: page.id,
     title,
@@ -90,8 +92,9 @@ export async function edit(
   });
   if (!page || page.user?.username !== user.username) return null;
 
-  const name = await encryptData(title);
-  const encrypted = await encryptData(content);
+  const crypto = new CryptoManager();
+  const name = await crypto.encryptData(title);
+  const encrypted = await crypto.encryptData(content);
   const res = await PageSchema.findByIdAndUpdate(page._id, {
     title: name,
     content: encrypted,

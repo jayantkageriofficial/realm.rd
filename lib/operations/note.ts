@@ -18,11 +18,12 @@
 
 import { customAlphabet } from "nanoid";
 import { type Notes, NotesSchema, type User } from "@/lib/database/schema";
-import { decryptData, encryptData } from "@/lib/operations/encryption";
+import { CryptoManager } from "@/lib/operations/encryption";
 
 export async function create(title: string, content: string, user: User) {
-  const name = await encryptData(title);
-  const encrypted = await encryptData(content);
+  const crypto = new CryptoManager();
+  const name = await crypto.encryptData(title);
+  const encrypted = await crypto.encryptData(content);
   const page = await NotesSchema.create({
     id: customAlphabet("1234567890abcdef", 9)(),
     title: name,
@@ -37,8 +38,10 @@ export async function get(id: string, user: User): Promise<Notes | null> {
     id,
   });
   if (!note || note.user?.username !== user.username) return null;
-  const title = await decryptData(note.title);
-  const content = await decryptData(note.content);
+
+  const crypto = new CryptoManager();
+  const title = await crypto.decryptData(note.title);
+  const content = await crypto.decryptData(note.content);
   return {
     id: note.id,
     title,
@@ -82,8 +85,9 @@ export async function edit(
   });
   if (!note || note.user?.username !== user.username) return null;
 
-  const name = await encryptData(title);
-  const encrypted = await encryptData(content);
+  const crypto = new CryptoManager();
+  const name = await crypto.encryptData(title);
+  const encrypted = await crypto.encryptData(content);
   const res = await NotesSchema.findByIdAndUpdate(note._id, {
     title: name,
     content: encrypted,
