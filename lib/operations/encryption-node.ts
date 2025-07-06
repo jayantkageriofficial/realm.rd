@@ -1,3 +1,4 @@
+/* eslint-disable */
 // The following is a secure encryption module for Node.js,
 // but it is not compatible with Next.js due to its use of Node.js-specific APIs.
 

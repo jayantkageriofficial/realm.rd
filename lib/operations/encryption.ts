@@ -41,7 +41,7 @@ class CryptoError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "CryptoError";
-    if (cause) (this as any).cause = cause;
+    if (cause) (this as Error & { cause?: unknown }).cause = cause;
   }
 }
 
@@ -49,7 +49,7 @@ class FileSystemError extends Error {
   constructor(message: string, cause?: unknown) {
     super(message);
     this.name = "FileSystemError";
-    if (cause) (this as any).cause = cause;
+    if (cause) (this as Error & { cause?: unknown }).cause = cause;
   }
 }
 
@@ -233,11 +233,7 @@ class MemoryUtils {
       return result === 0;
     }
   }
-  static createContext(
-    module: string,
-    algorithm: string,
-    purpose: string = "encrypt"
-  ): Buffer {
+  static createContext(module: string, algorithm: string): Buffer {
     return Buffer.concat([
       Buffer.from(module, "utf8"),
       Buffer.from(algorithm, "utf8"),
@@ -259,8 +255,7 @@ class SecureMemoryManager {
       throw new CryptoError("Secure memory not initialized");
     if (size <= 0 || size > 1024 * 1024)
       throw new CryptoError("Invalid secure memory allocation size");
-    let buffer: Uint8Array;
-    buffer = new Uint8Array(size);
+    const buffer: Uint8Array = new Uint8Array(size);
     SecureMemoryManager.allocatedBuffers.add(buffer);
     return buffer;
   }
@@ -345,7 +340,7 @@ class CryptoManager {
       "crypto_secretbox_open_easy",
     ];
     for (const func of requiredFunctions) {
-      if (typeof (sodium as any)[func] !== "function") {
+      if (typeof (sodium as Record<string, unknown>)[func] !== "function") {
         throw new CryptoError(
           "Required sodium function not available: " + func
         );
@@ -380,7 +375,7 @@ class CryptoManager {
       SecureMemoryManager.free(storageKey);
       SecureMemoryManager.free(nonce);
       return combined;
-    } catch (error) {
+    } catch {
       SecureMemoryManager.free(masterKey);
       SecureMemoryManager.free(storageKey);
       SecureMemoryManager.free(nonce);
@@ -429,7 +424,7 @@ class CryptoManager {
         const result = Buffer.from(masterKey);
         SecureMemoryManager.free(masterKey);
         return result;
-      } catch (error) {
+      } catch {
         SecureMemoryManager.free(masterKey);
         throw new CryptoError("Key loading failed");
       } finally {
@@ -515,7 +510,7 @@ class CryptoManager {
       ]);
       MemoryUtils.secureZeroBuffer(derivedKey);
       return combined.toString(CIPHER_ENCODING);
-    } catch (error) {
+    } catch {
       throw new CryptoError("Encryption operation failed");
     } finally {
       if (masterKey) MemoryUtils.secureZeroBuffer(masterKey);
@@ -554,7 +549,7 @@ class CryptoManager {
       decrypted += decipher.final("utf8");
       MemoryUtils.secureZeroBuffer(derivedKey);
       return decrypted;
-    } catch (error) {
+    } catch {
       throw new CryptoError("Decryption operation failed");
     } finally {
       if (masterKey) MemoryUtils.secureZeroBuffer(masterKey);
