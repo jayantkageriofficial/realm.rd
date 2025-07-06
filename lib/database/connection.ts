@@ -52,32 +52,41 @@ async function mongoConnect(): Promise<mongoose.Connection> {
   if (global.database.mongoose.conn) return global.database.mongoose.conn;
 
   if (!global.database.mongoose.promise) {
-    try {
-      const tempConnection = await mongoose.connect(Config.MONGODB_URI, {
-        serverSelectionTimeoutMS: 5000,
-        connectTimeoutMS: 5000,
-        socketTimeoutMS: 5000,
-        bufferCommands: false,
-      });
+    global.database.mongoose.promise = (async () => {
+      try {
+        const tempConnection = await mongoose.connect(Config.MONGODB_URI, {
+          serverSelectionTimeoutMS: 5000,
+          connectTimeoutMS: 5000,
+          socketTimeoutMS: 5000,
+          bufferCommands: false,
+        });
 
-      const blockStatus = await MiscSchema.findOne({ blocked: true })
-        .maxTimeMS(3000)
-        .exec();
+        if (tempConnection.connection.readyState !== 1) {
+          await new Promise<void>((resolve, reject) => {
+            tempConnection.connection.once("connected", resolve);
+            tempConnection.connection.once("error", reject);
 
-      if (blockStatus) {
+            setTimeout(() => reject(new Error("Connection timeout")), 10000);
+          });
+        }
+
+        const blockStatus = await MiscSchema.findOne({ blocked: true })
+          .maxTimeMS(3000)
+          .exec();
+
+        if (blockStatus) {
+          await mongoose.disconnect();
+          error("Database connections are blocked");
+          throw new Error("Database connections are blocked");
+        }
+
+        return tempConnection.connection;
+      } catch (e) {
         await mongoose.disconnect();
-        error("Database connections are blocked");
-        throw new Error("Database connections are blocked");
+        global.database.mongoose.promise = null;
+        throw e;
       }
-
-      global.database.mongoose.promise = Promise.resolve(
-        tempConnection.connection
-      );
-    } catch (e) {
-      await mongoose.disconnect();
-      global.database.mongoose.promise = null;
-      throw e;
-    }
+    })();
   }
 
   try {
@@ -96,22 +105,22 @@ async function redisConnect(): Promise<RedisClient> {
   }
 
   if (!global.database.redis.promise) {
-    try {
-      const client = createClient({
-        url: Config.REDIS_URI,
-        socket: {
-          connectTimeout: 5000,
-        },
-      });
+    global.database.redis.promise = (async () => {
+      try {
+        const client = createClient({
+          url: Config.REDIS_URI,
+          socket: {
+            connectTimeout: 5000,
+          },
+        });
 
-      client.on("error", (err) => {});
-
-      await client.connect();
-      global.database.redis.promise = Promise.resolve(client);
-    } catch (e) {
-      global.database.redis.promise = null;
-      throw e;
-    }
+        await client.connect();
+        return client;
+      } catch (e) {
+        global.database.redis.promise = null;
+        throw e;
+      }
+    })();
   }
 
   try {
