@@ -99,6 +99,7 @@ pnpm dev
 - 🎨 [Tailwind CSS](https://tailwindcss.com/)
 - 🍃 [MongoDB](https://www.mongodb.com/)
 - 🧱 [Mongoose](https://mongoosejs.com/)
+- 🗄️ [Redis](https://redis.io/)
 - 🔒 [JWT](https://jwt.io/)
 - 🔐 [BcryptJS](https://www.npmjs.com/package/bcryptjs)
 - 🧠 [Libsodium](https://github.com/jedisct1/libsodium.js)
