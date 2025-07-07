@@ -1253,21 +1253,20 @@ class CryptoManager {
   }
 }
 
-process.on("exit", () => {
+process.once("exit", () => {
   CryptoManager.shutdown().catch(console.error);
 });
 
-process.on("SIGINT", () => {
-  CryptoManager.shutdown()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
-});
-
-process.on("SIGTERM", () => {
-  CryptoManager.shutdown()
-    .then(() => process.exit(0))
-    .catch(() => process.exit(1));
-});
+let sigLoad = false;
+if (!sigLoad) {
+  ["SIGTERM", "SIGINT"].forEach((signal) => {
+    process.once(signal as NodeJS.Signals, async () => {
+      CryptoManager.shutdown();
+      process.exit(0);
+    });
+  });
+  sigLoad = true;
+}
 
 process.on("uncaughtException", (error) => {
   SecurityAuditLogger.getInstance().logSecurityEvent(

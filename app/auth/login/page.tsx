@@ -64,7 +64,7 @@ export default function Login(props: {
     }
     toast.success("Logged In", { id });
     setInfo({ username: "", password: "", loading: false });
-    return redirect(path || "/");
+    return redirect(path?.startsWith("/auth/logout") ? "/" : path || "/");
   };
 
   return (

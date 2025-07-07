@@ -257,13 +257,6 @@ if (process.env.NEXT_RUNTIME === "nodejs") {
   });
 }
 
-["SIGTERM", "SIGINT", "SIGUSR2"].forEach((signal) => {
-  process.on(signal as NodeJS.Signals, async () => {
-    await closeAllConnections();
-    ready("All database connections closed on app termination");
-  });
-});
-
 export default dbConnect;
 export {
   closeAllConnections,

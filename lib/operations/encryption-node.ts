@@ -615,14 +615,17 @@ class CryptoManager {
 process.on("exit", () => {
   CryptoManager.shutdown();
 });
-process.on("SIGINT", () => {
-  CryptoManager.shutdown();
-  process.exit(0);
-});
-process.on("SIGTERM", () => {
-  CryptoManager.shutdown();
-  process.exit(0);
-});
+
+let sigLoad = false;
+if (!sigLoad) {
+  ["SIGTERM", "SIGINT"].forEach((signal) => {
+    process.once(signal as NodeJS.Signals, async () => {
+      CryptoManager.shutdown();
+      process.exit(0);
+    });
+  });
+  sigLoad = true;
+}
 
 export {
   FileSystem,
