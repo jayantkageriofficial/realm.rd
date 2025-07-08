@@ -75,7 +75,7 @@ pnpm dev
 
 - 🔐 `JWT_SECRET` (**required**): This is a secret string that is used to sign the JWT tokens. Changing this value will revoke all existing sessions.
 
-- 🍪 `SESSION_DURATION` (_optional_): This variable specifies the duration of the session in days. The default value is `15`.
+- 🍪 `SESSION_DURATION` (_optional_): This variable specifies the duration of the session in minutes. The default value is `15`.
 
 - 💾 `MONGODB_URI` (**required**): This variable specifies the URI to the MongoDB database.
 
@@ -97,11 +97,15 @@ pnpm dev
 - 🔒 [JWT](https://jwt.io/)
 - 🔐 [BcryptJS](https://www.npmjs.com/package/bcryptjs)
 - 🧠 [Libsodium](https://github.com/jedisct1/libsodium.js)
-- 💾 [XLSX](https://www.npmjs.com/package/xlsx)
-- 📤 [Telegram Bot API](https://core.telegram.org/bots/api)
-- 🔥 [Codemirror](https://codemirror.net/)
-- 🧱 [Mantine UI](https://mantine.dev/)
+- 💾 [SheetJS](https://www.npmjs.com/package/sheetjs-style)
+- 🔥 [CodeMirror](https://codemirror.net/)
 - 📚 [MDX Editor](https://github.com/mdx-editor/editor)
+- 📊 [Mantine React Table](https://www.mantine-react-table.com/)
+- 🧩 [React Use](https://github.com/streamich/react-use)
+- 🍃 [Nano ID](https://github.com/ai/nanoid)
+- 🧷 [Proper Lockfile](https://www.npmjs.com/package/proper-lockfile)
+- ☕ [React Hot Toast](https://react-hot-toast.com/)
+- 📤 [Telegram Bot API](https://core.telegram.org/bots/api)
 - 📦 [PNPM](https://pnpm.io/)
 
 ## 📜 License
