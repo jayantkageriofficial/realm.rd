@@ -48,7 +48,7 @@ import { useRouter } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { utils, write } from "xlsx";
+import XLSX from "sheetjs-style";
 import { dltMonth, editMonth } from "@/lib/actions/exp";
 
 const CashIcon = ({ size = 24, ...props }) => (
@@ -499,7 +499,6 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
         });
         await editMonth(initialData.id, month, data);
       } catch (error) {
-        console.error("Failed to save data:", error);
         toast.error("Failed to save data.");
       }
     },
@@ -599,7 +598,6 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       toast.success("Month deleted successfully");
       router.push("/exp");
     } catch (error) {
-      console.error("Failed to delete month:", error);
       toast.error("Failed to delete month.");
     } finally {
       setDeleteMonthModalOpen(false);
@@ -679,13 +677,15 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
     [activeAccount, transactions, saveData, monthName, accounts]
   );
 
-  const handleExportExcel = useCallback(() => {
+  const handleExportExcel = useCallback(async () => {
     try {
-      const wb = utils.book_new();
+      toast.loading("Processing", { id: "excel-export" });
+      const wb = XLSX.utils.book_new();
 
       Object.entries(accounts).forEach(([accountId, account]) => {
         const accountTransactions = transactions[accountId] || [];
         let runningBalance = 0;
+
         const dataForSheet = accountTransactions.map((t) => {
           runningBalance += t.amount;
           return {
@@ -704,15 +704,97 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
           };
         });
 
-        const ws = utils.json_to_sheet(dataForSheet);
         const sheetName = account.name
           .replace(/[*?:/\\[\]]/g, "_")
           .substring(0, 31);
-        utils.book_append_sheet(wb, ws, sheetName);
+
+        const ws = XLSX.utils.json_to_sheet(dataForSheet);
+        const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+
+        for (let col = range.s.c; col <= range.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+          if (!ws[cellAddress]) continue;
+
+          ws[cellAddress].s = {
+            font: {
+              bold: true,
+              color: { rgb: "000000" },
+            },
+            fill: {
+              patternType: "solid",
+              fgColor: { rgb: "00B0F0" },
+            },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } },
+            },
+            alignment: { horizontal: "center", vertical: "center" },
+          };
+        }
+
+        for (let row = 1; row <= range.e.r; row++) {
+          for (let col = range.s.c; col <= range.e.c; col++) {
+            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+            if (!ws[cellAddress]) continue;
+
+            ws[cellAddress].s = {
+              font: { color: { rgb: "000000" } },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } },
+              },
+              alignment: { vertical: "center" },
+            };
+
+            if (col === 2) {
+              ws[cellAddress].s.numFmt = "₹#,##0.00";
+              ws[cellAddress].s.alignment = {
+                horizontal: "right",
+                vertical: "center",
+              };
+            }
+
+            if (col === 5) {
+              ws[cellAddress].s.numFmt = "₹#,##0.00";
+              ws[cellAddress].s.alignment = {
+                horizontal: "right",
+                vertical: "center",
+              };
+            }
+
+            if (col === 3 || col === 4)
+              ws[cellAddress].s.alignment = {
+                horizontal: "center",
+                vertical: "center",
+              };
+          }
+        }
+
+        ws["!cols"] = [
+          { width: 12 },
+          { width: 25 },
+          { width: 15 },
+          { width: 10 },
+          { width: 15 },
+          { width: 15 },
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
       });
 
-      const wbout = write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      const wbout = XLSX.write(wb, {
+        bookType: "xlsx",
+        type: "array",
+        cellStyles: true,
+      });
+
+      const blob = new Blob([wbout], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -725,10 +807,9 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success("Data exported successfully");
+      toast.success("Data exported successfully", { id: "excel-export" });
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to export data");
+      toast.error("Failed to export data", { id: "excel-export" });
     }
   }, [accounts, transactions]);
 
