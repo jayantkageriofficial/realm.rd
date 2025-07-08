@@ -498,7 +498,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
           transactions: updatedTransactions,
         });
         await editMonth(initialData.id, month, data);
-      } catch (error) {
+      } catch {
         toast.error("Failed to save data.");
       }
     },
@@ -597,7 +597,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       await dltMonth(initialData.id);
       toast.success("Month deleted successfully");
       router.push("/exp");
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete month.");
     } finally {
       setDeleteMonthModalOpen(false);
@@ -808,7 +808,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       URL.revokeObjectURL(url);
 
       toast.success("Data exported successfully", { id: "excel-export" });
-    } catch (error) {
+    } catch {
       toast.error("Failed to export data", { id: "excel-export" });
     }
   }, [accounts, transactions]);
