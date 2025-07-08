@@ -23,7 +23,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React from "react";
 import { useClickAway } from "react-use";
-import logo from "@/assets/jayantkageri.png";
+import logo from "@/assets/logo.svg";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -61,11 +61,7 @@ export default function Navbar() {
         <div className="px-6 py-2 mx-auto md:flex md:justify-between md:items-center">
           <div className="flex items-center justify-between">
             <Link href="/">
-              <Image
-                className="w-auto h-12 rounded-full"
-                src={logo}
-                alt="Logo"
-              />
+              <Image className="w-auto h-8 m-1" src={logo} alt="Logo" />
             </Link>
 
             <div className="flex md:hidden">
@@ -73,6 +69,7 @@ export default function Navbar() {
                 type="button"
                 className="text-gray-200 hover:text-gray-400 focus:outline-none focus:text-gray-400"
                 aria-label="toggle menu"
+                hidden={"/auth/login" === path || "/locked" === path}
                 onClick={(e) => {
                   e.preventDefault();
                   setIsOpen(!isOpen);
