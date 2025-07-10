@@ -1,6 +1,6 @@
 /*
  realm.rd, Scribble the plans, spill the thoughts.
- Copyright (C) 2025 Jayant Hegde Kageri <https://github.com/jayantkageri/>
+ Copyright (C) 2025 Jayant Hegde Kageri <https://jayantkageri.in/>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU Affero General Public License as
@@ -17,6 +17,6 @@
 */
 
 export async function register() {
-	if (process.env.NEXT_RUNTIME === "nodejs")
-		await import("@/lib/database/connection");
+  if (process.env.NEXT_RUNTIME === "nodejs")
+    await import("@/lib/database/connection");
 }

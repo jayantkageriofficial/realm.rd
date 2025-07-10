@@ -1,6 +1,6 @@
 /*
  realm.rd, Scribble the plans, spill the thoughts.
- Copyright (C) 2025 Jayant Hegde Kageri <https://github.com/jayantkageri/>
+ Copyright (C) 2025 Jayant Hegde Kageri <https://jayantkageri.in/>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU Affero General Public License as
@@ -88,7 +88,7 @@ const nextConfig: NextConfig = {
         new Date().getFullYear() === 2025
           ? 2025
           : `2025 - ${new Date().getFullYear()}`
-      } Jayant Hegde Kageri <https://github.com/jayantkageri/>`
+      } Jayant Hegde Kageri <https://jayantkageri.in/>`
     );
     console.log(
       "➔",
