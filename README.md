@@ -95,7 +95,7 @@ pnpm dev
 - 🧱 [Mongoose](https://mongoosejs.com/)
 - 🗄️ [Redis](https://redis.io/)
 - 🔒 [JWT](https://jwt.io/)
-- 🔐 [BcryptJS](https://www.npmjs.com/package/bcryptjs)
+- 🔐 [Argon2](https://www.npmjs.com/package/argon2)
 - 🧠 [Libsodium](https://github.com/jedisct1/libsodium.js)
 - 💾 [SheetJS](https://www.npmjs.com/package/sheetjs-style)
 - 🔥 [CodeMirror](https://codemirror.net/)

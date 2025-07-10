@@ -16,7 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import bcrypt from "bcryptjs";
+import argon2 from "argon2";
 import jwt from "jsonwebtoken";
 import Config from "@/lib/constant";
 import {
@@ -97,7 +97,7 @@ const generateDBChecksum = async (
       password,
       blockPassword,
       lastPasswordChange,
-      alg: `${Config.SALT_ROUNDS}×${Config.CIPHER_ALGORITHM}`,
+      alg: `${Config.CIPHER_ALGORITHM}×${Config.CIPHER_ENCODING}`,
     })
   );
 
@@ -221,13 +221,13 @@ export async function login(
   const redis = await getRedisConnection();
   const checksum = await redis.get((user._id || "").toString());
 
-  const check = await bcrypt.compare(
-    await hashString(password),
-    user.password || ""
+  const check = await argon2.verify(
+    user.password || "",
+    await hashString(password)
   );
-  const force = await bcrypt.compare(
-    await hashString(password),
-    user.blockPassword || ""
+  const force = await argon2.verify(
+    user.blockPassword || "",
+    await hashString(password)
   );
   const verify = await verifyDBChecksum(
     user.username,
@@ -238,6 +238,14 @@ export async function login(
   );
 
   if (force || !verify || checksum !== user.checksum) {
+    if (force && argon2.needsRehash(user.blockPassword || ""))
+      await changeLockPassword(
+        await hashString(username.toLowerCase()),
+        password,
+        password,
+        ip
+      );
+
     await new MiscSchema({
       blocked: true,
     }).save();
@@ -254,6 +262,14 @@ export async function login(
     return "locked";
   }
   if (!check) return null;
+
+  if (argon2.needsRehash(user.password || ""))
+    await changePassword(
+      await hashString(username.toLowerCase()),
+      password,
+      password,
+      ip
+    );
 
   const genToken = await token({ user, ip });
   await log(
@@ -296,15 +312,9 @@ export async function register(
 
   const redis = await getRedisConnection();
   const password = Math.floor(Math.random() * 1e12).toString();
-  const pass = await bcrypt.hash(
-    await hashString(password),
-    await bcrypt.genSalt(Config.SALT_ROUNDS)
-  );
+  const pass = await argon2.hash(await hashString(password));
   const blockPassword = Math.floor(Math.random() * 1e12).toString();
-  const blockPass = await bcrypt.hash(
-    await hashString(blockPassword),
-    await bcrypt.genSalt(Config.SALT_ROUNDS)
-  );
+  const blockPass = await argon2.hash(await hashString(blockPassword));
 
   const date = new Date();
   const checksum = await generateDBChecksum(
@@ -343,14 +353,14 @@ export async function changePassword(
     username: username.toLowerCase(),
   });
   if (!user) return null;
-  const check = await bcrypt.compare(oldpassword, user.password || "");
+  const check = await argon2.verify(
+    user.password || "",
+    await hashString(oldpassword)
+  );
   if (!check) return null;
 
   const redis = await getRedisConnection();
-  const pass = await bcrypt.hash(
-    await hashString(newpassword),
-    await bcrypt.genSalt(Config.SALT_ROUNDS)
-  );
+  const pass = await argon2.hash(await hashString(newpassword));
   const date = new Date();
   const checksum = await generateDBChecksum(
     username.toLowerCase(),
@@ -387,14 +397,14 @@ export async function changeLockPassword(
     username: username,
   });
   if (!user) return null;
-  const check = await bcrypt.compare(oldpassword, user.blockPassword || "");
+  const check = await argon2.verify(
+    user.blockPassword || "",
+    await hashString(oldpassword)
+  );
   if (!check) return null;
 
   const redis = await getRedisConnection();
-  const pass = await bcrypt.hash(
-    await hashString(newpassword),
-    await bcrypt.genSalt(Config.SALT_ROUNDS)
-  );
+  const pass = await argon2.hash(await hashString(newpassword));
   const date = new Date();
   const checksum = await generateDBChecksum(
     username,

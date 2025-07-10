@@ -26,8 +26,6 @@ const Config = {
     ? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
     : process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000", // No trailing slash
 
-  SALT_ROUNDS: 12,
-
   JWT_SECRET: Buffer.from(
     `${process.env.BUILD_ID}_${process.env.JWT_SECRET || "JWT_SECRET"}`
   ).toString("base64"),
