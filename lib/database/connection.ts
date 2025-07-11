@@ -35,6 +35,8 @@ declare global {
     redis: {
       client: RedisClient | null;
       promise: Promise<RedisClient> | null;
+      retries?: number;
+      lastError?: Error | null;
     };
     initialized: boolean;
   };
@@ -43,7 +45,7 @@ declare global {
 if (!global.database) {
   global.database = {
     mongoose: { conn: null, promise: null },
-    redis: { client: null, promise: null },
+    redis: { client: null, promise: null, retries: 0, lastError: null },
     initialized: false,
   };
 }
@@ -99,28 +101,54 @@ async function mongoConnect(): Promise<mongoose.Connection> {
   return global.database.mongoose.conn;
 }
 
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries = 10,
+  initialDelay = 500
+): Promise<T> {
+  let attempt = 0;
+  let delay = initialDelay;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err) {
+      attempt++;
+      if (attempt > maxRetries) throw err;
+      await new Promise((res) => setTimeout(res, delay));
+      delay *= 2;
+    }
+  }
+}
+
 async function redisConnect(): Promise<RedisClient> {
   if (global.database.redis.client && global.database.redis.client.isOpen) {
     return global.database.redis.client;
   }
 
   if (!global.database.redis.promise) {
-    global.database.redis.promise = (async () => {
+    global.database.redis.promise = retryWithBackoff<RedisClient>(async () => {
       try {
         const client = createClient({
           url: Config.REDIS_URI,
           socket: {
-            connectTimeout: 5000,
+            connectTimeout: 7000,
           },
         });
 
+        client.on("error", (err) => {
+          error("Redis Client Error:", err);
+          global.database.redis.lastError = err;
+        });
+
         await client.connect();
+        global.database.redis.retries = 0;
+        global.database.redis.lastError = null;
         return client;
       } catch (e) {
         global.database.redis.promise = null;
         throw e;
       }
-    })();
+    });
   }
 
   try {
