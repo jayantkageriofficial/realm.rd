@@ -799,9 +799,9 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `account-data-${
+      a.download = `${monthName} (as on ${
         new Date().toISOString().split("T")[0]
-      }.xlsx`;
+      }).xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -811,7 +811,7 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
     } catch {
       toast.error("Failed to export data", { id: "excel-export" });
     }
-  }, [accounts, transactions]);
+  }, [accounts, transactions, monthName]);
 
   const handleExportCSV = useCallback(() => {
     try {

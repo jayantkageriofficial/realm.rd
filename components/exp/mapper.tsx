@@ -171,7 +171,14 @@ const NewMonthModal = ({
             const worksheet = workbook.Sheets[sheetName];
             const accountName = sheetName;
 
-            const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
+            interface ExcelRow {
+              Date?: string;
+              Description?: string;
+              Amount?: string | number;
+              Category?: string;
+              Type?: string;
+            }
+            const jsonData = XLSX.utils.sheet_to_json<ExcelRow>(worksheet);
 
             if (jsonData.length > 0) {
               const accountId = accountName.toLowerCase().replace(/\s+/g, "_");
@@ -193,8 +200,15 @@ const NewMonthModal = ({
                   }
                 }
 
-                const amount = parseFloat(row.Amount) || 0;
-                const type = row.Type || (amount >= 0 ? "Credit" : "Debit");
+                const amount =
+                  typeof row.Amount === "number"
+                    ? row.Amount
+                    : parseFloat(row.Amount ?? "0") || 0;
+
+                let type: "Credit" | "Debit";
+                if (row.Type === "Credit" || row.Type === "Debit")
+                  type = row.Type;
+                else type = amount >= 0 ? "Credit" : "Debit";
 
                 return {
                   id: Date.now() + index,
