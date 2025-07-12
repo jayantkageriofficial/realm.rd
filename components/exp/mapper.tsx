@@ -26,12 +26,22 @@ import {
   Modal,
   Stack,
   TextInput,
+  Tabs,
+  FileInput,
+  Text,
+  Alert,
+  Badge,
+  Divider,
+  Box,
+  Card,
 } from "@mantine/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useCallback, useEffect } from "react";
 import { createMonth, getMonths } from "@/lib/actions/exp";
 import type { Expenditure } from "@/lib/database/schema";
+import { toast } from "react-hot-toast";
+import * as XLSX from "sheetjs-style";
 
 const theme: MantineThemeOverride = {
   colorScheme: "dark",
@@ -61,6 +71,39 @@ const useDisclosure = (initialState = false) => {
   return [opened, { open, close, toggle }] as const;
 };
 
+interface Transaction {
+  id: number;
+  date: string;
+  description: string;
+  amount: number;
+  category: string;
+  type: "Credit" | "Debit";
+  balance?: number;
+}
+
+interface Account {
+  name: string;
+  icon: "cash" | "bank";
+}
+
+interface Accounts {
+  [key: string]: Account;
+}
+
+interface Transactions {
+  [key: string]: Transaction[];
+}
+
+interface ImportSummary {
+  accounts: number;
+  totalTransactions: number;
+  accountDetails: {
+    name: string;
+    transactions: number;
+    balance: number;
+  }[];
+}
+
 const NewMonthModal = ({
   opened,
   onClose,
@@ -68,33 +111,311 @@ const NewMonthModal = ({
 }: {
   opened: boolean;
   onClose: () => void;
-  onCreate: (month: string) => void;
+  onCreate: (month: string, data?: string) => void;
 }) => {
   const [month, setMonth] = React.useState("");
+  const [file, setFile] = React.useState<File | null>(null);
+  const [activeTab, setActiveTab] = React.useState<string | null>("create");
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [importError, setImportError] = React.useState<string | null>(null);
+  const [importSummary, setImportSummary] =
+    React.useState<ImportSummary | null>(null);
+  const [processedData, setProcessedData] = React.useState<string | null>(null);
 
   const handleCreate = () => {
+    if (!month.trim()) {
+      toast.error("Month name is required");
+      return;
+    }
     onCreate(month);
     setMonth("");
   };
 
+  const processExcelFile = useCallback(async (file: File) => {
+    if (!file) return;
+
+    setIsProcessing(true);
+    setImportError(null);
+    setImportSummary(null);
+    setProcessedData(null);
+
+    try {
+      const fileReader = new FileReader();
+
+      fileReader.onload = async (e) => {
+        try {
+          const data = e.target?.result;
+          if (!data) {
+            setImportError("Failed to read file");
+            setIsProcessing(false);
+            return;
+          }
+
+          const workbook = XLSX.read(data, { type: "array" });
+
+          if (workbook.SheetNames.length === 0) {
+            setImportError("No sheets found in the file");
+            setIsProcessing(false);
+            return;
+          }
+
+          const accounts: Accounts = {};
+          const transactions: Transactions = {};
+          const summary: ImportSummary = {
+            accounts: 0,
+            totalTransactions: 0,
+            accountDetails: [],
+          };
+
+          workbook.SheetNames.forEach((sheetName) => {
+            const worksheet = workbook.Sheets[sheetName];
+            const accountName = sheetName;
+
+            const jsonData = XLSX.utils.sheet_to_json<any>(worksheet);
+
+            if (jsonData.length > 0) {
+              const accountId = accountName.toLowerCase().replace(/\s+/g, "_");
+
+              accounts[accountId] = {
+                name: accountName,
+                icon: accountName.toLowerCase().includes("cash")
+                  ? "cash"
+                  : "bank",
+              };
+
+              const accountTransactions = jsonData.map((row, index) => {
+                let dateStr = row.Date;
+                if (typeof dateStr === "string" && dateStr.includes("-")) {
+                  const parts = dateStr.split("-");
+                  if (parts.length === 3) {
+                    const [day, month, year] = parts;
+                    dateStr = `${year}-${month}-${day}`;
+                  }
+                }
+
+                const amount = parseFloat(row.Amount) || 0;
+                const type = row.Type || (amount >= 0 ? "Credit" : "Debit");
+
+                return {
+                  id: Date.now() + index,
+                  date: dateStr || new Date().toISOString().split("T")[0],
+                  description: row.Description || "Imported transaction",
+                  amount: amount,
+                  category: row.Category || (amount >= 0 ? "Credit" : "Other"),
+                  type: type,
+                };
+              });
+
+              transactions[accountId] = accountTransactions;
+
+              summary.accounts++;
+              summary.totalTransactions += accountTransactions.length;
+
+              const balance = accountTransactions.reduce(
+                (sum, t) => sum + t.amount,
+                0
+              );
+
+              summary.accountDetails.push({
+                name: accountName,
+                transactions: accountTransactions.length,
+                balance: balance,
+              });
+            }
+          });
+
+          if (Object.keys(accounts).length === 0) {
+            setImportError("No valid account data found in the file");
+            setIsProcessing(false);
+            return;
+          }
+
+          const dataJson = JSON.stringify({
+            accounts,
+            transactions,
+          });
+
+          setImportSummary(summary);
+          setProcessedData(dataJson);
+          setIsProcessing(false);
+        } catch {
+          setImportError(
+            "Failed to process the file. Make sure it's a valid Excel file exported from Account Management."
+          );
+          setIsProcessing(false);
+        }
+      };
+
+      fileReader.onerror = () => {
+        setImportError("Failed to read the file");
+        setIsProcessing(false);
+      };
+
+      fileReader.readAsArrayBuffer(file);
+    } catch {
+      setImportError("An error occurred while processing the file");
+      setIsProcessing(false);
+    }
+  }, []);
+
+  const handleImport = () => {
+    if (!month.trim()) return toast.error("Month name is required");
+    if (!processedData) return toast.error("No data to import");
+    onCreate(month, processedData);
+  };
+
+  useEffect(() => {
+    if (file) processExcelFile(file);
+  }, [file, processExcelFile]);
+
+  useEffect(() => {
+    if (!opened) {
+      setMonth("");
+      setFile(null);
+      setImportError(null);
+      setImportSummary(null);
+      setProcessedData(null);
+      setActiveTab("create");
+    }
+  }, [opened]);
+
   return (
     <MantineProvider theme={theme}>
-      <Modal opened={opened} onClose={onClose} title="Add New Month" centered>
-        <Stack spacing="md">
-          <TextInput
-            label="Month Name"
-            placeholder="e.g., September 2025"
-            value={month}
-            onChange={(event) => setMonth(event.currentTarget.value)}
-            required
-          />
-          <Group position="right" mt="md">
-            <Button variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button onClick={handleCreate}>Create</Button>
-          </Group>
-        </Stack>
+      <Modal
+        opened={opened}
+        onClose={onClose}
+        title="Add New Month"
+        centered
+        size="lg"
+      >
+        <Tabs value={activeTab} onTabChange={setActiveTab}>
+          <Tabs.List grow>
+            <Tabs.Tab value="create">Create Empty Month</Tabs.Tab>
+            <Tabs.Tab value="import">Import Data</Tabs.Tab>
+          </Tabs.List>
+
+          <Tabs.Panel value="create" pt="md">
+            <Stack spacing="md">
+              <TextInput
+                label="Month Name"
+                placeholder="e.g., September 2025"
+                value={month}
+                onChange={(event) => setMonth(event.currentTarget.value)}
+                required
+              />
+              <Group position="right" mt="md">
+                <Button variant="outline" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreate} disabled={!month.trim()}>
+                  Create
+                </Button>
+              </Group>
+            </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="import" pt="md">
+            <Stack spacing="md">
+              <Text size="sm" color="dimmed">
+                Import data from an Excel file exported from Account Management
+              </Text>
+
+              <TextInput
+                label="Month Name"
+                placeholder="e.g., September 2025"
+                value={month}
+                onChange={(event) => setMonth(event.currentTarget.value)}
+                required
+              />
+
+              <FileInput
+                label="Select Excel File"
+                // @ts-expect-error: Mantine types conflict with FileInput
+                placeholder="Click to select file"
+                accept=".xlsx"
+                value={file}
+                onChange={setFile}
+                clearable
+                required
+              />
+
+              {isProcessing && (
+                <Alert color="blue" title="Processing">
+                  Analyzing file data... This may take a moment.
+                </Alert>
+              )}
+
+              {importError && (
+                <Alert color="red" title="Import Error">
+                  {importError}
+                </Alert>
+              )}
+
+              {importSummary && (
+                <Card withBorder shadow="sm" p="md">
+                  <Text weight={700} size="lg" mb="xs">
+                    Import Summary
+                  </Text>
+                  <Group position="apart" mb="xs">
+                    <Text>Accounts Found:</Text>
+                    <Badge size="lg" color="blue">
+                      {importSummary.accounts}
+                    </Badge>
+                  </Group>
+                  <Group position="apart" mb="xs">
+                    <Text>Total Transactions:</Text>
+                    <Badge size="lg" color="green">
+                      {importSummary.totalTransactions}
+                    </Badge>
+                  </Group>
+
+                  <Divider my="sm" />
+
+                  <Text weight={600} size="sm" mb="xs">
+                    Account Details:
+                  </Text>
+                  {importSummary.accountDetails.map((account, index) => (
+                    <Box key={index} mb="xs">
+                      <Group position="apart">
+                        <Text weight={500}>{account.name}</Text>
+                        <Text
+                          size="sm"
+                          color={account.balance >= 0 ? "green" : "red"}
+                        >
+                          Balance: ₹
+                          {Math.abs(account.balance).toLocaleString("en-IN", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </Text>
+                      </Group>
+                      <Text size="xs" color="dimmed">
+                        {account.transactions} transactions
+                      </Text>
+                    </Box>
+                  ))}
+                </Card>
+              )}
+
+              <Group position="right" mt="md">
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={isProcessing}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  loading={isProcessing}
+                  disabled={!processedData || !month.trim()}
+                  color="green"
+                >
+                  Import Data
+                </Button>
+              </Group>
+            </Stack>
+          </Tabs.Panel>
+        </Tabs>
       </Modal>
     </MantineProvider>
   );
@@ -118,10 +439,15 @@ export default function ExpComponent(props: {
     loading: false,
   });
 
-  const handleCreateMonth = async (month: string) => {
-    const id = await createMonth(month, "{}");
-    close();
-    router.push(`/exp/${id}`);
+  const handleCreateMonth = async (month: string, data?: string) => {
+    try {
+      const id = await createMonth(month, data || "{}");
+      close();
+      router.push(`/exp/${id}`);
+      toast.success(`Month ${month} created successfully`);
+    } catch {
+      toast.error("Failed to create month");
+    }
   };
 
   return (

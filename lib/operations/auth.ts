@@ -243,7 +243,8 @@ export async function login(
         await hashString(username.toLowerCase()),
         password,
         password,
-        ip
+        ip,
+        true
       );
 
     await new MiscSchema({
@@ -268,7 +269,8 @@ export async function login(
       await hashString(username.toLowerCase()),
       password,
       password,
-      ip
+      ip,
+      true
     );
 
   const genToken = await token({ user, ip });
@@ -346,7 +348,8 @@ export async function changePassword(
   username: string,
   oldpassword: string,
   newpassword: string,
-  ip: string
+  ip: string,
+  rehash: boolean = false
 ): Promise<string | null> {
   if (newpassword.length < 8) return null;
   let user = await UserSchema.findOne({
@@ -371,11 +374,12 @@ export async function changePassword(
 
   await log(
     "password",
-    `The user ${username.toLowerCase()} has changed the __**login password**__`,
+    !rehash
+      ? `The user ${username.toLowerCase()} has changed the __**login password**__`
+      : `The login password of the user ${username.toLowerCase()} has been rehashed`,
     ip,
-    date
+    new Date()
   );
-
   await redis.set(user._id.toString(), checksum);
   user = await UserSchema.findByIdAndUpdate(user._id, {
     password: pass,
@@ -390,7 +394,8 @@ export async function changeLockPassword(
   username: string,
   oldpassword: string,
   newpassword: string,
-  ip: string
+  ip: string,
+  rehash: boolean = false
 ): Promise<string | null> {
   if (newpassword.length < 8) return null;
   const user = await UserSchema.findOne({
@@ -422,7 +427,9 @@ export async function changeLockPassword(
 
   await log(
     "password",
-    `The user ${username.toLowerCase()} has changed the __**application lock password**__`,
+    !rehash
+      ? `The user ${username.toLowerCase()} has changed the __**application lock password**__`
+      : `The application lock password of the user ${username.toLowerCase()} has been rehashed`,
     ip,
     new Date()
   );
