@@ -66,7 +66,7 @@ interface AccountManagementClientProps {
 
 interface TransactionRow {
   original: Transaction;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const AccountManagementClient: React.FC<AccountManagementClientProps> = ({

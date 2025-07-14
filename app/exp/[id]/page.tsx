@@ -19,10 +19,8 @@
 "use server";
 
 import { notFound } from "next/navigation";
-import Client, {
-  type Accounts,
-  type Transactions,
-} from "@/components/exp/client";
+import Client from "@/components/exp/client";
+import { type Accounts, type Transactions } from "@/components/exp/utils";
 import { getMonth } from "@/lib/actions/exp";
 
 interface AppData {
