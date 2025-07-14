@@ -19,25 +19,25 @@
 "use client";
 
 import {
+  Alert,
+  Badge,
+  Box,
   Button,
+  Card,
+  Divider,
+  FileInput,
   Group,
   MantineProvider,
   type MantineThemeOverride,
   Modal,
   Stack,
-  TextInput,
   Tabs,
-  FileInput,
   Text,
-  Alert,
-  Badge,
-  Divider,
-  Box,
-  Card,
+  TextInput,
 } from "@mantine/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { createMonth, getMonths } from "@/lib/actions/exp";
 import type { Expenditure } from "@/lib/database/schema";
 import { toast } from "react-hot-toast";
@@ -62,7 +62,7 @@ const theme: MantineThemeOverride = {
 };
 
 const useDisclosure = (initialState = false) => {
-  const [opened, setOpened] = React.useState(initialState);
+  const [opened, setOpened] = useState(initialState);
 
   const open = React.useCallback(() => setOpened(true), []);
   const close = React.useCallback(() => setOpened(false), []);
@@ -104,23 +104,147 @@ interface ImportSummary {
   }[];
 }
 
-const NewMonthModal = ({
-  opened,
+interface ImportDataFormProps {
+  month: string;
+  setMonth: (value: string) => void;
+  file: File | null;
+  setFile: (file: File | null) => void;
+  isProcessing: boolean;
+  importError: string | null;
+  importSummary: ImportSummary | null;
+  onClose: () => void;
+  onImport: () => void;
+  processedData: string | null;
+}
+
+const ImportDataForm: React.FC<ImportDataFormProps> = ({
+  month,
+  setMonth,
+  file,
+  setFile,
+  isProcessing,
+  importError,
+  importSummary,
   onClose,
-  onCreate,
-}: {
+  onImport,
+  processedData,
+}) => {
+  return (
+    <Stack spacing="md">
+      <Text size="sm" color="dimmed">
+        Import data from an Excel file exported from Account Management
+      </Text>
+
+      <TextInput
+        label="Month Name"
+        placeholder="e.g., September 2025"
+        value={month}
+        onChange={(event) => setMonth(event.currentTarget.value)}
+        required
+      />
+
+      <FileInput
+        label="Select Excel File"
+        // @ts-expect-error: Mantine types conflict with FileInput
+        placeholder="Click to select file"
+        accept=".xlsx"
+        value={file}
+        onChange={setFile}
+        clearable
+        required
+      />
+
+      {isProcessing && (
+        <Alert color="blue" title="Processing">
+          Analyzing file data... This may take a moment.
+        </Alert>
+      )}
+
+      {importError && (
+        <Alert color="red" title="Import Error">
+          {importError}
+        </Alert>
+      )}
+
+      {importSummary && (
+        <Card withBorder shadow="sm" p="md">
+          <Text weight={700} size="lg" mb="xs">
+            Import Summary
+          </Text>
+          <Group position="apart" mb="xs">
+            <Text>Accounts Found:</Text>
+            <Badge size="lg" color="blue">
+              {importSummary.accounts}
+            </Badge>
+          </Group>
+          <Group position="apart" mb="xs">
+            <Text>Total Transactions:</Text>
+            <Badge size="lg" color="green">
+              {importSummary.totalTransactions}
+            </Badge>
+          </Group>
+
+          <Divider my="sm" />
+
+          <Text weight={600} size="sm" mb="xs">
+            Account Details:
+          </Text>
+          {importSummary.accountDetails.map((account, index) => (
+            <Box key={index} mb="xs">
+              <Group position="apart">
+                <Text weight={500}>{account.name}</Text>
+                <Text size="sm" color={account.balance >= 0 ? "green" : "red"}>
+                  Balance: ₹
+                  {Math.abs(account.balance).toLocaleString("en-IN", {
+                    minimumFractionDigits: 2,
+                  })}
+                </Text>
+              </Group>
+              <Text size="xs" color="dimmed">
+                {account.transactions} transactions
+              </Text>
+            </Box>
+          ))}
+        </Card>
+      )}
+
+      <Group position="right" mt="md">
+        <Button variant="outline" onClick={onClose} disabled={isProcessing}>
+          Cancel
+        </Button>
+        <Button
+          onClick={onImport}
+          loading={isProcessing}
+          disabled={!processedData || !month.trim()}
+          color="green"
+        >
+          Import Data
+        </Button>
+      </Group>
+    </Stack>
+  );
+};
+
+interface NewMonthModalProps {
   opened: boolean;
   onClose: () => void;
   onCreate: (month: string, data?: string) => void;
+}
+
+const NewMonthModal: React.FC<NewMonthModalProps> = ({
+  opened,
+  onClose,
+  onCreate,
 }) => {
-  const [month, setMonth] = React.useState("");
-  const [file, setFile] = React.useState<File | null>(null);
-  const [activeTab, setActiveTab] = React.useState<string | null>("create");
-  const [isProcessing, setIsProcessing] = React.useState(false);
-  const [importError, setImportError] = React.useState<string | null>(null);
-  const [importSummary, setImportSummary] =
-    React.useState<ImportSummary | null>(null);
-  const [processedData, setProcessedData] = React.useState<string | null>(null);
+  const [month, setMonth] = useState<string>("");
+  const [file, setFile] = useState<File | null>(null);
+  const [activeTab, setActiveTab] = useState<string | null>("create");
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSummary, setImportSummary] = useState<ImportSummary | null>(
+    null
+  );
+  const [processedData, setProcessedData] = useState<string | null>(null);
 
   const handleCreate = () => {
     if (!month.trim()) {
@@ -159,6 +283,18 @@ const NewMonthModal = ({
             return;
           }
 
+          const sheetsToProcess = workbook.SheetNames.filter(
+            (name) => name !== "Summary"
+          );
+
+          if (sheetsToProcess.length === 0) {
+            setImportError(
+              "No valid sheets found in the file after excluding Summary"
+            );
+            setIsProcessing(false);
+            return;
+          }
+
           const accounts: Accounts = {};
           const transactions: Transactions = {};
           const summary: ImportSummary = {
@@ -167,7 +303,7 @@ const NewMonthModal = ({
             accountDetails: [],
           };
 
-          workbook.SheetNames.forEach((sheetName) => {
+          sheetsToProcess.forEach((sheetName) => {
             const worksheet = workbook.Sheets[sheetName];
             const accountName = sheetName;
 
@@ -252,7 +388,8 @@ const NewMonthModal = ({
           setImportSummary(summary);
           setProcessedData(dataJson);
           setIsProcessing(false);
-        } catch {
+        } catch (error) {
+          console.error(error);
           setImportError(
             "Failed to process the file. Make sure it's a valid Excel file exported from Account Management."
           );
@@ -266,7 +403,8 @@ const NewMonthModal = ({
       };
 
       fileReader.readAsArrayBuffer(file);
-    } catch {
+    } catch (error) {
+      console.error(error);
       setImportError("An error occurred while processing the file");
       setIsProcessing(false);
     }
@@ -329,105 +467,18 @@ const NewMonthModal = ({
           </Tabs.Panel>
 
           <Tabs.Panel value="import" pt="md">
-            <Stack spacing="md">
-              <Text size="sm" color="dimmed">
-                Import data from an Excel file exported from Account Management
-              </Text>
-
-              <TextInput
-                label="Month Name"
-                placeholder="e.g., September 2025"
-                value={month}
-                onChange={(event) => setMonth(event.currentTarget.value)}
-                required
-              />
-
-              <FileInput
-                label="Select Excel File"
-                // @ts-expect-error: Mantine types conflict with FileInput
-                placeholder="Click to select file"
-                accept=".xlsx"
-                value={file}
-                onChange={setFile}
-                clearable
-                required
-              />
-
-              {isProcessing && (
-                <Alert color="blue" title="Processing">
-                  Analyzing file data... This may take a moment.
-                </Alert>
-              )}
-
-              {importError && (
-                <Alert color="red" title="Import Error">
-                  {importError}
-                </Alert>
-              )}
-
-              {importSummary && (
-                <Card withBorder shadow="sm" p="md">
-                  <Text weight={700} size="lg" mb="xs">
-                    Import Summary
-                  </Text>
-                  <Group position="apart" mb="xs">
-                    <Text>Accounts Found:</Text>
-                    <Badge size="lg" color="blue">
-                      {importSummary.accounts}
-                    </Badge>
-                  </Group>
-                  <Group position="apart" mb="xs">
-                    <Text>Total Transactions:</Text>
-                    <Badge size="lg" color="green">
-                      {importSummary.totalTransactions}
-                    </Badge>
-                  </Group>
-
-                  <Divider my="sm" />
-
-                  <Text weight={600} size="sm" mb="xs">
-                    Account Details:
-                  </Text>
-                  {importSummary.accountDetails.map((account, index) => (
-                    <Box key={index} mb="xs">
-                      <Group position="apart">
-                        <Text weight={500}>{account.name}</Text>
-                        <Text
-                          size="sm"
-                          color={account.balance >= 0 ? "green" : "red"}
-                        >
-                          Balance: ₹
-                          {Math.abs(account.balance).toLocaleString("en-IN", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </Text>
-                      </Group>
-                      <Text size="xs" color="dimmed">
-                        {account.transactions} transactions
-                      </Text>
-                    </Box>
-                  ))}
-                </Card>
-              )}
-
-              <Group position="right" mt="md">
-                <Button
-                  variant="outline"
-                  onClick={onClose}
-                  disabled={isProcessing}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleImport}
-                  loading={isProcessing}
-                  disabled={!processedData || !month.trim()}
-                  color="green"
-                >
-                  Import Data
-                </Button>
-              </Group>
-            </Stack>
+            <ImportDataForm
+              month={month}
+              setMonth={setMonth}
+              file={file}
+              setFile={setFile}
+              isProcessing={isProcessing}
+              importError={importError}
+              importSummary={importSummary}
+              onClose={onClose}
+              onImport={handleImport}
+              processedData={processedData}
+            />
           </Tabs.Panel>
         </Tabs>
       </Modal>
@@ -441,7 +492,7 @@ export default function ExpComponent(props: {
 }) {
   const router = useRouter();
   const [opened, { open, close }] = useDisclosure(false);
-  const [info, setInfo] = React.useState<{
+  const [info, setInfo] = useState<{
     total: number;
     page: number;
     months: Expenditure[];
@@ -459,7 +510,8 @@ export default function ExpComponent(props: {
       close();
       router.push(`/exp/${id}`);
       toast.success(`Month ${month} created successfully`);
-    } catch {
+    } catch (error) {
+      console.error(error);
       toast.error("Failed to create month");
     }
   };
@@ -542,11 +594,12 @@ export default function ExpComponent(props: {
                 ...info,
                 loading: true,
               });
-              const notes = await getMonths(++info.page);
+              const nextPage = info.page + 1;
+              const notes = await getMonths(nextPage);
               setInfo({
                 ...info,
                 months: [...info.months, ...JSON.parse(notes)],
-                page: ++info.page,
+                page: nextPage,
                 loading: false,
               });
             }}
