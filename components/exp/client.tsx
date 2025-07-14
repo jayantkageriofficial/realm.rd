@@ -682,12 +682,32 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       toast.loading("Processing", { id: "excel-export" });
       const wb = XLSX.utils.book_new();
 
+      const allTransactions: {
+        Account: string;
+        Date: string;
+        Description: string;
+        Amount: number;
+        Type: "Credit" | "Debit";
+        Category: string;
+        AccountId: string;
+      }[] = [];
+
       Object.entries(accounts).forEach(([accountId, account]) => {
         const accountTransactions = transactions[accountId] || [];
         let runningBalance = 0;
 
         const dataForSheet = accountTransactions.map((t) => {
           runningBalance += t.amount;
+          allTransactions.push({
+            Account: account.name,
+            Date: t.date,
+            Description: t.description,
+            Amount: t.amount,
+            Type: t.type,
+            Category: t.category,
+            AccountId: accountId,
+          });
+
           return {
             Date: new Date(t.date)
               .toLocaleDateString("en-IN", {
@@ -786,6 +806,224 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
       });
 
+      allTransactions.sort(
+        (a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()
+      );
+
+      const summaryData = allTransactions.map((t) => {
+        return {
+          Account: t.Account,
+          Date: new Date(t.Date)
+            .toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            })
+            .replace(/\//g, "-"),
+          Description: t.Description,
+          Amount: t.Amount,
+          Type: t.Type,
+          Category: t.Category,
+        };
+      });
+
+      const summaryWS = XLSX.utils.json_to_sheet(summaryData);
+
+      const dataRange = XLSX.utils.decode_range(summaryWS["!ref"] || "A1");
+      const lastDataRow = dataRange.e.r;
+
+      const categoryData: {
+        [category: string]: {
+          Category: string;
+          Credit: number;
+          Debit: number;
+          Net: number;
+        };
+      } = {};
+
+      allTransactions.forEach((t) => {
+        if (!categoryData[t.Category])
+          categoryData[t.Category] = {
+            Category: t.Category,
+            Credit: 0,
+            Debit: 0,
+            Net: 0,
+          };
+
+        if (t.Type === "Credit") categoryData[t.Category].Credit += t.Amount;
+        else categoryData[t.Category].Debit += Math.abs(t.Amount);
+        categoryData[t.Category].Net += t.Amount;
+      });
+
+      const pivotData = Object.values(categoryData);
+
+      pivotData.sort((a, b) => b.Net - a.Net);
+
+      const totalRow = {
+        Category: "TOTAL",
+        Credit: pivotData.reduce((sum, item) => sum + item.Credit, 0),
+        Debit: pivotData.reduce((sum, item) => sum + item.Debit, 0),
+        Net: pivotData.reduce((sum, item) => sum + item.Net, 0),
+      };
+
+      pivotData.push(totalRow);
+
+      const pivotStartRow = lastDataRow + 3;
+      const headers = ["Category", "Credit", "Debit", "Net"];
+      headers.forEach((header, colIndex) => {
+        const cellAddress = XLSX.utils.encode_cell({
+          r: pivotStartRow,
+          c: colIndex,
+        });
+        summaryWS[cellAddress] = { v: header, t: "s" };
+        summaryWS[cellAddress].s = {
+          font: {
+            bold: true,
+            color: { rgb: "000000" },
+          },
+          fill: {
+            patternType: "solid",
+            fgColor: { rgb: "00B0F0" },
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } },
+          },
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+      });
+
+      pivotData.forEach((row, rowIndex) => {
+        const isTotal = rowIndex === pivotData.length - 1;
+        const currentRow = pivotStartRow + rowIndex + 1;
+
+        const categoryCell = XLSX.utils.encode_cell({ r: currentRow, c: 0 });
+        summaryWS[categoryCell] = { v: row.Category, t: "s" };
+
+        const creditCell = XLSX.utils.encode_cell({ r: currentRow, c: 1 });
+        summaryWS[creditCell] = { v: row.Credit, t: "n" };
+
+        const debitCell = XLSX.utils.encode_cell({ r: currentRow, c: 2 });
+        summaryWS[debitCell] = { v: row.Debit, t: "n" };
+
+        const netCell = XLSX.utils.encode_cell({ r: currentRow, c: 3 });
+        summaryWS[netCell] = { v: row.Net, t: "n" };
+
+        [categoryCell, creditCell, debitCell, netCell].forEach(
+          (cell, colIndex) => {
+            summaryWS[cell].s = {
+              font: {
+                color: { rgb: "000000" },
+                bold: isTotal,
+              },
+              border: {
+                top: { style: "thin", color: { rgb: "000000" } },
+                bottom: { style: "thin", color: { rgb: "000000" } },
+                left: { style: "thin", color: { rgb: "000000" } },
+                right: { style: "thin", color: { rgb: "000000" } },
+              },
+              alignment: { vertical: "center" },
+              ...(isTotal && {
+                fill: {
+                  patternType: "solid",
+                  fgColor: { rgb: "00B0F0" },
+                },
+              }),
+            };
+
+            if (colIndex >= 1) {
+              summaryWS[cell].s.numFmt = "₹#,##0.00";
+              summaryWS[cell].s.alignment = {
+                horizontal: "right",
+                vertical: "center",
+              };
+            }
+          }
+        );
+      });
+
+      const lastPivotRow = pivotStartRow + pivotData.length;
+      summaryWS["!ref"] = XLSX.utils.encode_range({
+        s: { r: 0, c: 0 },
+        e: { r: lastPivotRow, c: 5 },
+      });
+
+      const summaryRange = XLSX.utils.decode_range(
+        XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: lastDataRow, c: 5 },
+        })
+      );
+
+      for (let col = summaryRange.s.c; col <= summaryRange.e.c; col++) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+        if (!summaryWS[cellAddress]) continue;
+
+        summaryWS[cellAddress].s = {
+          font: {
+            bold: true,
+            color: { rgb: "000000" },
+          },
+          fill: {
+            patternType: "solid",
+            fgColor: { rgb: "00B0F0" },
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } },
+          },
+          alignment: { horizontal: "center", vertical: "center" },
+        };
+      }
+
+      for (let row = 1; row <= summaryRange.e.r; row++) {
+        for (let col = summaryRange.s.c; col <= summaryRange.e.c; col++) {
+          const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+          if (!summaryWS[cellAddress]) continue;
+
+          summaryWS[cellAddress].s = {
+            font: { color: { rgb: "000000" } },
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+              left: { style: "thin", color: { rgb: "000000" } },
+              right: { style: "thin", color: { rgb: "000000" } },
+            },
+            alignment: { vertical: "center" },
+          };
+
+          if (col === 3) {
+            summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
+            summaryWS[cellAddress].s.alignment = {
+              horizontal: "right",
+              vertical: "center",
+            };
+          }
+
+          if (col === 4 || col === 5) {
+            summaryWS[cellAddress].s.alignment = {
+              horizontal: "center",
+              vertical: "center",
+            };
+          }
+        }
+      }
+
+      summaryWS["!cols"] = [
+        { width: 20 }, // Account
+        { width: 12 }, // Date
+        { width: 25 }, // Description
+        { width: 15 }, // Amount
+        { width: 10 }, // Type
+        { width: 15 }, // Category
+      ];
+
+      XLSX.utils.book_append_sheet(wb, summaryWS, "Summary");
+
       const wbout = XLSX.write(wb, {
         bookType: "xlsx",
         type: "array",
@@ -808,11 +1046,11 @@ const AccountManagementClient: React.FC<AccountManagementClientProps> = ({
       URL.revokeObjectURL(url);
 
       toast.success("Data exported successfully", { id: "excel-export" });
-    } catch {
+    } catch (error) {
+      console.error("Export error:", error);
       toast.error("Failed to export data", { id: "excel-export" });
     }
   }, [accounts, transactions, monthName]);
-
   const handleExportCSV = useCallback(() => {
     try {
       const headers = [
