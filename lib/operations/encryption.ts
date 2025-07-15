@@ -542,20 +542,8 @@ class FileSystem {
 }
 
 class MemoryUtils {
-  static secureZeroBuffer(buffer: Buffer): void {
-    if (buffer && buffer.length > 0) {
-      buffer.fill(0);
-      buffer.fill(0xff);
-      buffer.fill(0);
-    }
-  }
-
-  static secureZeroUint8Array(array: Uint8Array): void {
-    if (array && array.length > 0) {
-      array.fill(0);
-      array.fill(0xff);
-      array.fill(0);
-    }
+  static secureZero(input: Buffer | Uint8Array): void {
+    if (input && input.length > 0) sodium.memzero(input);
   }
 
   static constantTimeEquals(a: Buffer, b: Buffer): boolean {
@@ -663,7 +651,7 @@ class SecureMemoryManager {
         SecureMemoryManager.totalAllocatedSize -= allocation.size;
       }
 
-      MemoryUtils.secureZeroUint8Array(buffer);
+      MemoryUtils.secureZero(buffer);
     });
   }
 
@@ -740,17 +728,14 @@ async function hkdfAsync(
     okm = Buffer.concat([okm, t]);
   }
 
-  MemoryUtils.secureZeroBuffer(prk);
-  MemoryUtils.secureZeroBuffer(t);
+  MemoryUtils.secureZero(prk);
+  MemoryUtils.secureZero(t);
 
   return okm.subarray(0, keyLength);
 }
 
 class CryptoManager {
   private static isInitialized = false;
-  private static keyCache: Uint8Array | null = null;
-  private static keyCacheExpiry: number = 0;
-  private static readonly KEY_CACHE_TTL = 5 * 60 * 1000;
   private static keyRotationTimer: NodeJS.Timeout | null = null;
   private static readonly cacheMutex = new AsyncMutex();
 
@@ -904,7 +889,7 @@ class CryptoManager {
           storageKey
         );
         masterKey.set(decryptedKey);
-        MemoryUtils.secureZeroUint8Array(decryptedKey);
+        MemoryUtils.secureZero(decryptedKey);
 
         const result = Buffer.from(masterKey);
 
@@ -930,38 +915,22 @@ class CryptoManager {
         );
       } finally {
         await SecureMemoryManager.free(masterKey);
-        if (combined) MemoryUtils.secureZeroBuffer(combined);
+        if (combined) MemoryUtils.secureZero(combined);
       }
     });
   }
 
-  async initializeMasterKey(): Promise<Buffer> {
+  private async withMasterKey<T>(
+    operation: (key: Buffer) => Promise<T>
+  ): Promise<T> {
     return CryptoManager.cacheMutex.runExclusive(async () => {
-      if (CryptoManager.keyCache && Date.now() < CryptoManager.keyCacheExpiry) {
-        this.auditLogger.logSecurityEvent("MASTER_KEY_CACHE_HIT", "INFO");
-        return Buffer.from(CryptoManager.keyCache);
-      }
-
-      if (CryptoManager.keyCache) {
-        await SecureMemoryManager.free(CryptoManager.keyCache);
-        CryptoManager.keyCache = null;
-        this.auditLogger.logSecurityEvent("MASTER_KEY_CACHE_EXPIRED", "INFO");
-      }
-
+      let masterKey: Buffer | null = null;
       try {
-        const masterKey = await this.loadMasterKey();
-
-        CryptoManager.keyCache = await SecureMemoryManager.allocate(
-          masterKey.length
-        );
-        CryptoManager.keyCache.set(masterKey);
-        CryptoManager.keyCacheExpiry = Date.now() + CryptoManager.KEY_CACHE_TTL;
-
+        this.auditLogger.logSecurityEvent("MASTER_KEY_LOADING", "INFO");
+        masterKey = await this.loadMasterKey();
         this.scheduleKeyRotationCheck();
 
-        const result = Buffer.from(masterKey);
-        MemoryUtils.secureZeroBuffer(masterKey);
-        return result;
+        return await operation(masterKey);
       } catch (error) {
         if (
           error instanceof CryptoError &&
@@ -971,7 +940,9 @@ class CryptoManager {
 
           return this.fileSystem.withFileLock(masterKeyPath, async () => {
             try {
-              return await this.loadMasterKey();
+              if (masterKey) MemoryUtils.secureZero(masterKey);
+              masterKey = await this.loadMasterKey();
+              return await operation(masterKey);
             } catch {
               await this.fileSystem.initializeDirectories();
               const keyData = await this.generateMasterKey();
@@ -979,12 +950,19 @@ class CryptoManager {
               await fs.writeFile(masterKeyPath, keyData, { mode: 0o600 });
               await this.fileSystem.setSecureFilePermissions(masterKeyPath);
 
-              MemoryUtils.secureZeroBuffer(keyData);
-              return await this.loadMasterKey();
+              MemoryUtils.secureZero(keyData);
+              if (masterKey) MemoryUtils.secureZero(masterKey);
+              masterKey = await this.loadMasterKey();
+              return await operation(masterKey);
             }
           });
         }
         throw error;
+      } finally {
+        if (masterKey) {
+          MemoryUtils.secureZero(masterKey);
+          this.auditLogger.logSecurityEvent("MASTER_KEY_ZEROED", "INFO");
+        }
       }
     });
   }
@@ -1034,138 +1012,136 @@ class CryptoManager {
   async encryptData(data: string): Promise<string> {
     InputValidator.validateDataSize(data);
 
-    let masterKey: Buffer | null = null;
-    let derivedKey: Buffer | null = null;
-    let iv: Buffer | null = null;
-    let salt: Buffer | null = null;
+    return this.withMasterKey(async (masterKey) => {
+      let derivedKey: Buffer | null = null;
+      let iv: Buffer | null = null;
+      let salt: Buffer | null = null;
 
-    try {
-      await CryptoManager.ensureSodiumReady();
-      masterKey = await this.initializeMasterKey();
+      try {
+        await CryptoManager.ensureSodiumReady();
 
-      iv = Buffer.from(sodium.randombytes_buf(CIPHER_IV_SIZE));
-      salt = Buffer.from(sodium.randombytes_buf(SALT_LENGTH));
+        iv = Buffer.from(sodium.randombytes_buf(CIPHER_IV_SIZE));
+        salt = Buffer.from(sodium.randombytes_buf(SALT_LENGTH));
 
-      const contextInfo = MemoryUtils.createContext(
-        "realm.encryption",
-        CIPHER_ALGORITHM,
-        CIPHER_KEY_SIZE
-      );
+        const contextInfo = MemoryUtils.createContext(
+          "realm.encryption",
+          CIPHER_ALGORITHM,
+          CIPHER_KEY_SIZE
+        );
 
-      derivedKey = await this.hkdfKey(
-        masterKey,
-        salt,
-        contextInfo,
-        CIPHER_KEY_SIZE
-      );
+        derivedKey = await this.hkdfKey(
+          masterKey,
+          salt,
+          contextInfo,
+          CIPHER_KEY_SIZE
+        );
 
-      const cipher = createCipheriv(CIPHER_ALGORITHM, derivedKey, iv);
-      let encrypted = cipher.update(data, "utf8", CIPHER_ENCODING);
-      encrypted += cipher.final(CIPHER_ENCODING);
+        const cipher = createCipheriv(CIPHER_ALGORITHM, derivedKey, iv);
+        let encrypted = cipher.update(data, "utf8", CIPHER_ENCODING);
+        encrypted += cipher.final(CIPHER_ENCODING);
 
-      const combined = Buffer.concat([
-        salt,
-        iv,
-        Buffer.from(encrypted, CIPHER_ENCODING),
-      ]);
+        const combined = Buffer.concat([
+          salt,
+          iv,
+          Buffer.from(encrypted, CIPHER_ENCODING),
+        ]);
 
-      this.auditLogger.logSecurityEvent("DATA_ENCRYPTED", "INFO", {
-        dataSize: data.length,
-        algorithm: CIPHER_ALGORITHM,
-      });
+        this.auditLogger.logSecurityEvent("DATA_ENCRYPTED", "INFO", {
+          dataSize: data.length,
+          algorithm: CIPHER_ALGORITHM,
+        });
 
-      return combined.toString(CIPHER_ENCODING);
-    } catch (error) {
-      this.auditLogger.logSecurityEvent("ENCRYPTION_FAILED", "ERROR", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+        return combined.toString(CIPHER_ENCODING);
+      } catch (error) {
+        this.auditLogger.logSecurityEvent("ENCRYPTION_FAILED", "ERROR", {
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
 
-      await MemoryUtils.constantTimeDelay();
-      throw new CryptoError(
-        "Encryption operation failed",
-        "ENCRYPTION_FAILED",
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-          ? error
-          : undefined
-      );
-    } finally {
-      if (masterKey) MemoryUtils.secureZeroBuffer(masterKey);
-      if (derivedKey) MemoryUtils.secureZeroBuffer(derivedKey);
-      if (iv) MemoryUtils.secureZeroBuffer(iv);
-      if (salt) MemoryUtils.secureZeroBuffer(salt);
-    }
+        await MemoryUtils.constantTimeDelay();
+        throw new CryptoError(
+          "Encryption operation failed",
+          "ENCRYPTION_FAILED",
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+            ? error
+            : undefined
+        );
+      } finally {
+        if (derivedKey) MemoryUtils.secureZero(derivedKey);
+        if (iv) MemoryUtils.secureZero(iv);
+        if (salt) MemoryUtils.secureZero(salt);
+      }
+    });
   }
 
   async decryptData(encryptedData: string): Promise<string> {
     InputValidator.validateEncryptedData(encryptedData);
 
-    let masterKey: Buffer | null = null;
-    let derivedKey: Buffer | null = null;
-    let combined: Buffer | null = null;
-    let salt: Buffer | null = null;
-    let iv: Buffer | null = null;
+    return this.withMasterKey(async (masterKey) => {
+      let derivedKey: Buffer | null = null;
+      let combined: Buffer | null = null;
+      let salt: Buffer | null = null;
+      let iv: Buffer | null = null;
 
-    try {
-      await CryptoManager.ensureSodiumReady();
-      masterKey = await this.initializeMasterKey();
+      try {
+        await CryptoManager.ensureSodiumReady();
 
-      combined = Buffer.from(encryptedData.trim(), CIPHER_ENCODING);
-      const minSize = SALT_LENGTH + CIPHER_IV_SIZE;
+        combined = Buffer.from(encryptedData.trim(), CIPHER_ENCODING);
+        const minSize = SALT_LENGTH + CIPHER_IV_SIZE;
 
-      if (combined.length < minSize)
-        throw new CryptoError("Invalid data format", "INVALID_DATA_FORMAT");
+        if (combined.length < minSize)
+          throw new CryptoError("Invalid data format", "INVALID_DATA_FORMAT");
 
-      salt = combined.subarray(0, SALT_LENGTH);
-      iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + CIPHER_IV_SIZE);
-      const encrypted = combined.subarray(SALT_LENGTH + CIPHER_IV_SIZE);
+        salt = combined.subarray(0, SALT_LENGTH);
+        iv = combined.subarray(SALT_LENGTH, SALT_LENGTH + CIPHER_IV_SIZE);
+        const encrypted = combined.subarray(SALT_LENGTH + CIPHER_IV_SIZE);
 
-      const contextInfo = MemoryUtils.createContext(
-        "realm.encryption",
-        CIPHER_ALGORITHM,
-        CIPHER_KEY_SIZE
-      );
+        const contextInfo = MemoryUtils.createContext(
+          "realm.encryption",
+          CIPHER_ALGORITHM,
+          CIPHER_KEY_SIZE
+        );
 
-      derivedKey = await this.hkdfKey(
-        masterKey,
-        salt,
-        contextInfo,
-        CIPHER_KEY_SIZE
-      );
+        derivedKey = await this.hkdfKey(
+          masterKey,
+          salt,
+          contextInfo,
+          CIPHER_KEY_SIZE
+        );
 
-      const decipher = createDecipheriv(CIPHER_ALGORITHM, derivedKey, iv);
-      let decrypted = decipher.update(encrypted, undefined, "utf8");
-      decrypted += decipher.final("utf8");
+        const decipher = createDecipheriv(CIPHER_ALGORITHM, derivedKey, iv);
+        let decrypted = decipher.update(encrypted, undefined, "utf8");
+        decrypted += decipher.final("utf8");
 
-      this.auditLogger.logSecurityEvent("DATA_DECRYPTED", "INFO", {
-        dataSize: decrypted.length,
-        algorithm: CIPHER_ALGORITHM,
-      });
+        this.auditLogger.logSecurityEvent("DATA_DECRYPTED", "INFO", {
+          dataSize: decrypted.length,
+          algorithm: CIPHER_ALGORITHM,
+        });
 
-      return decrypted;
-    } catch (error) {
-      this.auditLogger.logSecurityEvent("DECRYPTION_FAILED", "ERROR", {
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
+        return decrypted;
+      } catch (error) {
+        this.auditLogger.logSecurityEvent("DECRYPTION_FAILED", "ERROR", {
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
 
-      await MemoryUtils.constantTimeDelay();
-      throw new CryptoError(
-        "Decryption operation failed",
-        "DECRYPTION_FAILED",
-        error instanceof Error
-          ? error.message
-          : typeof error === "string"
-          ? error
-          : undefined
-      );
-    } finally {
-      if (masterKey) MemoryUtils.secureZeroBuffer(masterKey);
-      if (derivedKey) MemoryUtils.secureZeroBuffer(derivedKey);
-      if (combined) MemoryUtils.secureZeroBuffer(combined);
-      if (salt) MemoryUtils.secureZeroBuffer(salt);
-      if (iv) MemoryUtils.secureZeroBuffer(iv);
-    }
+        await MemoryUtils.constantTimeDelay();
+        throw new CryptoError(
+          "Decryption operation failed",
+          "DECRYPTION_FAILED",
+          error instanceof Error
+            ? error.message
+            : typeof error === "string"
+            ? error
+            : undefined
+        );
+      } finally {
+        if (derivedKey) MemoryUtils.secureZero(derivedKey);
+        if (combined) MemoryUtils.secureZero(combined);
+        if (salt) MemoryUtils.secureZero(salt);
+        if (iv) MemoryUtils.secureZero(iv);
+      }
+    });
   }
 
   async rotateKey(): Promise<void> {
@@ -1181,12 +1157,7 @@ class CryptoManager {
         await fs.writeFile(masterKeyPath, newKeyData);
         await this.fileSystem.setSecureFilePermissions(masterKeyPath);
 
-        if (CryptoManager.keyCache) {
-          await SecureMemoryManager.free(CryptoManager.keyCache);
-          CryptoManager.keyCache = null;
-        }
-
-        MemoryUtils.secureZeroBuffer(newKeyData);
+        MemoryUtils.secureZero(newKeyData);
 
         this.auditLogger.logSecurityEvent("KEY_ROTATED", "INFO", {
           backupPath,
@@ -1219,11 +1190,6 @@ class CryptoManager {
         CryptoManager.keyRotationTimer = null;
       }
 
-      if (CryptoManager.keyCache) {
-        await SecureMemoryManager.free(CryptoManager.keyCache);
-        CryptoManager.keyCache = null;
-      }
-
       await SecureMemoryManager.emergencyCleanup();
 
       SecurityAuditLogger.getInstance().logSecurityEvent(
@@ -1238,16 +1204,10 @@ class CryptoManager {
 
   getSecurityStatus(): {
     isInitialized: boolean;
-    cacheStatus: string;
     memoryStats: { totalAllocated: number; bufferCount: number };
   } {
     return {
       isInitialized: CryptoManager.isInitialized,
-      cacheStatus: CryptoManager.keyCache
-        ? Date.now() < CryptoManager.keyCacheExpiry
-          ? "active"
-          : "expired"
-        : "empty",
       memoryStats: SecureMemoryManager.getStats(),
     };
   }
