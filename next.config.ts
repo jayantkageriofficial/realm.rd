@@ -52,6 +52,7 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     nodeMiddleware: true,
+    devtoolSegmentExplorer: true,
   },
   async headers() {
     return [
