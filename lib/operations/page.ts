@@ -17,8 +17,14 @@
 */
 
 import { customAlphabet } from "nanoid";
-import { type Page, PageSchema, type User } from "@/lib/database/schema";
 import { CryptoManager } from "@/lib/operations/encryption";
+import { getRedisConnection } from "@/lib/database/connection";
+import {
+  generateContentChecksum,
+  verifyContentChecksum,
+} from "@/lib/operations/checksum";
+import { lockdown } from "@/lib/operations/auth";
+import { type Page, PageSchema, type User } from "@/lib/database/schema";
 
 export async function create(
   title: string,
@@ -36,6 +42,18 @@ export async function create(
     date,
     user,
   });
+  const redis = await getRedisConnection();
+  redis.set(
+    page._id,
+    await generateContentChecksum(
+      page.id,
+      name,
+      encrypted,
+      page.timestamp,
+      user.username
+    )
+  );
+
   return page;
 }
 
@@ -44,9 +62,42 @@ export async function get(id: string, user: User): Promise<Page | null> {
     id,
   });
   if (!page || page.user?.username !== user.username) return null;
+
+  const redis = await getRedisConnection();
+  const checksum = await redis.get((page._id || "").toString());
+
+  if (
+    !checksum ||
+    !(await verifyContentChecksum(
+      checksum,
+      id,
+      page.title,
+      page.content,
+      page.timestamp as Date,
+      page.user.username
+    ))
+  ) {
+    await lockdown(false, user.username, "internal");
+    return null;
+  }
+
+  if (!checksum) {
+    await redis.set(
+      (page._id || "").toString(),
+      await generateContentChecksum(
+        id,
+        page.title,
+        page.content,
+        page.timestamp as Date,
+        page.user.username
+      )
+    );
+  }
+
   const crypto = new CryptoManager();
   const title = await crypto.decryptData(page.title);
   const content = await crypto.decryptData(page.content);
+
   return {
     id: page.id,
     title,
@@ -100,6 +151,19 @@ export async function edit(
     content: encrypted,
     date,
   });
+
+  const redis = await getRedisConnection();
+  redis.set(
+    page._id?.toString() || "",
+    await generateContentChecksum(
+      page.id,
+      name,
+      encrypted,
+      page.timestamp as Date,
+      page.user.username
+    )
+  );
+
   return res;
 }
 
@@ -108,6 +172,6 @@ export async function dlt(id: string, user: User): Promise<Page | null> {
     id,
   });
   if (!page || page.user?.username !== user.username) return null;
-  const res = await PageSchema.findByIdAndDelete(page._id);
+  const res: Page | null = await PageSchema.findByIdAndDelete(page._id);
   return res;
 }

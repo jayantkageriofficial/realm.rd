@@ -26,6 +26,13 @@ import {
 import { MiscSchema, type User, UserSchema } from "@/lib/database/schema";
 import { CryptoManager } from "@/lib/operations/encryption";
 import { log } from "@/lib/operations/logs";
+import {
+  hashString,
+  generateJWTChecksum,
+  generateDBChecksum,
+  verifyJWTChecksum,
+  verifyDBChecksum,
+} from "@/lib/operations/checksum";
 
 export interface JwtPayload {
   username: string;
@@ -60,67 +67,6 @@ export function getDate(date?: Date) {
   return `${datePart}T${timePart}.${ms}+05:30`;
 }
 
-export const hashString = async (str: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const payload = encoder.encode(str);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", payload);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-
-  return hashHex;
-};
-
-const generateChecksum = async (data: JwtPayload): Promise<string> =>
-  await hashString(
-    JSON.stringify({
-      key: `${Config.TG_CHAT_ID}*${data.buildId}+${Config.CIPHER_ALGORITHM}`,
-      domain: Config.DOMAIN,
-      username: data.username,
-      ip: data.ip,
-      buildId: data.buildId,
-      iss: Config.JWT_ISSUER,
-      sign: await hashString(`${data.buildId}×${Config.CIPHER_ALGORITHM}`),
-    })
-  );
-
-const generateDBChecksum = async (
-  username: string,
-  password: string,
-  blockPassword: string,
-  lastPasswordChange: string
-): Promise<string> =>
-  await hashString(
-    JSON.stringify({
-      username,
-      password,
-      blockPassword,
-      lastPasswordChange,
-      alg: `${Config.CIPHER_ALGORITHM}×${Config.CIPHER_ENCODING}`,
-    })
-  );
-
-const verifyChecksum = async (
-  data: JwtPayload,
-  checksum: string
-): Promise<boolean> => checksum === (await generateChecksum(data));
-
-const verifyDBChecksum = async (
-  username: string,
-  password: string,
-  blockPassword: string,
-  lastPasswordChange: string,
-  checksum: string
-): Promise<boolean> =>
-  checksum ===
-  (await generateDBChecksum(
-    username,
-    password,
-    blockPassword,
-    lastPasswordChange
-  ));
-
 async function token({
   user,
   ip,
@@ -136,7 +82,7 @@ async function token({
   const gen = jwt.sign(
     {
       ...opt,
-      checksum: await generateChecksum({
+      checksum: await generateJWTChecksum({
         ip,
         buildId: process.env.BUILD_ID,
         ...opt,
@@ -161,6 +107,26 @@ async function token({
   return gen;
 }
 
+export async function lockdown(
+  force: boolean,
+  username: string,
+  ip: string
+): Promise<void> {
+  await new MiscSchema({
+    blocked: true,
+  }).save();
+  await closeAllConnections();
+  CryptoManager.shutdown();
+  await log(
+    "lock",
+    `The application has been locked as per the request of the user  __**${username.toLowerCase()} via ${
+      force ? "the lock password" : "the database checksum mismatch"
+    } **__`,
+    ip,
+    new Date()
+  );
+}
+
 export async function verify(
   token: string,
   ip: string
@@ -176,7 +142,7 @@ export async function verify(
     if (
       verification.iss !== Config.JWT_ISSUER ||
       verification.sub !== Config.DOMAIN ||
-      !(await verifyChecksum(
+      !(await verifyJWTChecksum(
         { ip, buildId: process.env.BUILD_ID, ...verification },
         verification?.checksum || ""
       ))
@@ -247,19 +213,7 @@ export async function login(
         true
       );
 
-    await new MiscSchema({
-      blocked: true,
-    }).save();
-    await closeAllConnections();
-    CryptoManager.shutdown();
-    await log(
-      "lock",
-      `The application has been locked as per the request of the user  __**${username.toLowerCase()} via ${
-        force ? "the lock password" : "the database checksum mismatch"
-      } **__`,
-      ip,
-      new Date()
-    );
+    await lockdown(force, username, ip);
     return "locked";
   }
   if (!check) return null;

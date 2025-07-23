@@ -51,7 +51,6 @@ const nextConfig: NextConfig = {
     dangerouslyAllowSVG: true,
   },
   experimental: {
-    nodeMiddleware: true,
     devtoolSegmentExplorer: true,
   },
   async headers() {

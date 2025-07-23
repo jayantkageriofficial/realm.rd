@@ -17,20 +17,37 @@
 */
 
 import { customAlphabet } from "nanoid";
-import { type Notes, NotesSchema, type User } from "@/lib/database/schema";
 import { CryptoManager } from "@/lib/operations/encryption";
+import { getRedisConnection } from "@/lib/database/connection";
+import {
+  generateContentChecksum,
+  verifyContentChecksum,
+} from "@/lib/operations/checksum";
+import { lockdown } from "@/lib/operations/auth";
+import { type Notes, NotesSchema, type User } from "@/lib/database/schema";
 
 export async function create(title: string, content: string, user: User) {
   const crypto = new CryptoManager();
   const name = await crypto.encryptData(title);
   const encrypted = await crypto.encryptData(content);
-  const page = await NotesSchema.create({
+  const note = await NotesSchema.create({
     id: customAlphabet("1234567890abcdef", 9)(),
     title: name,
     content: encrypted,
     user,
   });
-  return page;
+  const redis = await getRedisConnection();
+  redis.set(
+    note._id,
+    await generateContentChecksum(
+      note.id,
+      name,
+      encrypted,
+      note.timestamp,
+      user.username
+    )
+  );
+  return note;
 }
 
 export async function get(id: string, user: User): Promise<Notes | null> {
@@ -39,9 +56,28 @@ export async function get(id: string, user: User): Promise<Notes | null> {
   });
   if (!note || note.user?.username !== user.username) return null;
 
+  const redis = await getRedisConnection();
+  const checksum = await redis.get((note._id || "").toString());
+
+  if (
+    !checksum ||
+    !(await verifyContentChecksum(
+      checksum,
+      id,
+      note.title,
+      note.content,
+      note.timestamp as Date,
+      note.user.username
+    ))
+  ) {
+    await lockdown(false, user.username, "internal");
+    return null;
+  }
+
   const crypto = new CryptoManager();
   const title = await crypto.decryptData(note.title);
   const content = await crypto.decryptData(note.content);
+
   return {
     id: note.id,
     title,
@@ -80,7 +116,7 @@ export async function edit(
   content: string,
   user: User
 ) {
-  const note = await NotesSchema.findOne({
+  const note: Notes | null = await NotesSchema.findOne({
     id,
   });
   if (!note || note.user?.username !== user.username) return null;
@@ -88,18 +124,32 @@ export async function edit(
   const crypto = new CryptoManager();
   const name = await crypto.encryptData(title);
   const encrypted = await crypto.encryptData(content);
+
   const res = await NotesSchema.findByIdAndUpdate(note._id, {
     title: name,
     content: encrypted,
   });
+
+  const redis = await getRedisConnection();
+  redis.set(
+    note._id?.toString() || "",
+    await generateContentChecksum(
+      note.id,
+      name,
+      encrypted,
+      note.timestamp as Date,
+      note.user.username
+    )
+  );
+
   return res;
 }
 
-export async function dlt(id: string, user: User) {
+export async function dlt(id: string, user: User): Promise<Notes | null> {
   const note = await NotesSchema.findOne({
     id,
   });
   if (!note || note.user?.username !== user.username) return null;
-  const res = await NotesSchema.findByIdAndDelete(note._id);
+  const res: Notes | null = await NotesSchema.findByIdAndDelete(note._id);
   return res;
 }

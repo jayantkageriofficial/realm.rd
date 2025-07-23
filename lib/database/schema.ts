@@ -34,6 +34,7 @@ interface Misc {
 }
 
 interface Page {
+  _id?: string;
   id: string;
   title: string;
   content: string;
@@ -43,6 +44,7 @@ interface Page {
 }
 
 interface Notes {
+  _id?: string;
   id: string;
   title: string;
   content: string;
