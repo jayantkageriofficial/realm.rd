@@ -53,6 +53,7 @@ interface Notes {
 }
 
 interface Expenditure {
+  _id?: string;
   id: string;
   month: string;
   content: string;

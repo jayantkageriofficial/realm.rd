@@ -81,19 +81,6 @@ export async function get(id: string, user: User): Promise<Page | null> {
     return null;
   }
 
-  if (!checksum) {
-    await redis.set(
-      (page._id || "").toString(),
-      await generateContentChecksum(
-        id,
-        page.title,
-        page.content,
-        page.timestamp as Date,
-        page.user.username
-      )
-    );
-  }
-
   const crypto = new CryptoManager();
   const title = await crypto.decryptData(page.title);
   const content = await crypto.decryptData(page.content);
@@ -173,5 +160,7 @@ export async function dlt(id: string, user: User): Promise<Page | null> {
   });
   if (!page || page.user?.username !== user.username) return null;
   const res: Page | null = await PageSchema.findByIdAndDelete(page._id);
+  const redis = await getRedisConnection();
+  redis.del(page._id?.toString() || "");
   return res;
 }

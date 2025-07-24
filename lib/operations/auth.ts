@@ -84,7 +84,7 @@ async function token({
       ...opt,
       checksum: await generateJWTChecksum({
         ip,
-        buildId: process.env.BUILD_ID,
+        buildId: Config.BUILD_ID,
         ...opt,
       }),
     },
@@ -143,7 +143,7 @@ export async function verify(
       verification.iss !== Config.JWT_ISSUER ||
       verification.sub !== Config.DOMAIN ||
       !(await verifyJWTChecksum(
-        { ip, buildId: process.env.BUILD_ID, ...verification },
+        { ip, buildId: Config.BUILD_ID, ...verification },
         verification?.checksum || ""
       ))
     )

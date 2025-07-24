@@ -20,7 +20,7 @@ import Config from "@/lib/constant";
 import { getDate } from "@/lib/operations/auth";
 
 export async function log(
-  category: "login" | "lock" | "password" | "build",
+  category: "login" | "lock" | "password",
   message: string,
   ip: string,
   date: Date

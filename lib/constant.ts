@@ -19,6 +19,7 @@
 import type { Algorithm } from "jsonwebtoken";
 
 const DEVELOPMENT = process.env.NODE_ENV !== "production";
+const BUILD_ID = process.env.BUILD_ID || "development";
 
 /** @description Refer README.md */
 const Config = {
@@ -26,8 +27,10 @@ const Config = {
     ? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
     : process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000", // No trailing slash
 
+  BUILD_ID,
+
   JWT_SECRET: Buffer.from(
-    `${process.env.BUILD_ID}_${process.env.JWT_SECRET || "JWT_SECRET"}`
+    `${BUILD_ID}_${process.env.JWT_SECRET || "JWT_SECRET"}`
   ).toString("base64"),
 
   JWT_ALGORITHM: "HS512" as Algorithm,

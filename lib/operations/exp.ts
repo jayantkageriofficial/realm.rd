@@ -18,35 +18,70 @@
 
 import { customAlphabet } from "nanoid";
 import { type Expenditure, ExpSchema, type User } from "@/lib/database/schema";
+import { getRedisConnection } from "@/lib/database/connection";
+import {
+  generateContentChecksum,
+  verifyContentChecksum,
+} from "@/lib/operations/checksum";
+import { lockdown } from "@/lib/operations/auth";
 import { CryptoManager } from "@/lib/operations/encryption";
 
 export async function create(month: string, content: string, user: User) {
   const crypto = new CryptoManager();
   const name = await crypto.encryptData(month);
   const encrypted = await crypto.encryptData(content);
-  const page = await ExpSchema.create({
+  const exp = await ExpSchema.create({
     id: customAlphabet("1234567890abcdef", 9)(),
     month: name,
     content: encrypted,
     user,
   });
-  return page;
+  const redis = await getRedisConnection();
+  redis.set(
+    exp._id,
+    await generateContentChecksum(
+      exp.id,
+      name,
+      encrypted,
+      exp.timestamp,
+      user.username
+    )
+  );
+  return exp;
 }
 
 export async function get(id: string, user: User): Promise<Expenditure | null> {
-  const note: Expenditure | null = await ExpSchema.findOne({
+  const exp: Expenditure | null = await ExpSchema.findOne({
     id,
   });
-  if (!note || note.user?.username !== user.username) return null;
+  if (!exp || exp.user?.username !== user.username) return null;
+  const redis = await getRedisConnection();
+  const checksum = await redis.get((exp._id || "").toString());
+
+  if (
+    !checksum ||
+    !(await verifyContentChecksum(
+      checksum,
+      id,
+      exp.month,
+      exp.content,
+      exp.timestamp as Date,
+      exp.user.username
+    ))
+  ) {
+    await lockdown(false, user.username, "internal");
+    return null;
+  }
+
   const crypto = new CryptoManager();
-  const month = await crypto.decryptData(note.month);
-  const content = await crypto.decryptData(note.content);
+  const month = await crypto.decryptData(exp.month);
+  const content = await crypto.decryptData(exp.content);
   return {
-    id: note.id,
+    id: exp.id,
     month,
     content,
-    timestamp: note.timestamp,
-    user: note.user,
+    timestamp: exp.timestamp,
+    user: exp.user,
   } as Expenditure;
 }
 
@@ -91,6 +126,19 @@ export async function edit(
     month: name,
     content: encrypted,
   });
+
+  const redis = await getRedisConnection();
+  redis.set(
+    exp._id?.toString() || "",
+    await generateContentChecksum(
+      exp.id,
+      name,
+      encrypted,
+      exp.timestamp as Date,
+      exp.user.username
+    )
+  );
+
   return res;
 }
 
@@ -100,5 +148,7 @@ export async function dlt(id: string, user: User) {
   });
   if (!exp || exp.user?.username !== user.username) return null;
   const res = await ExpSchema.findByIdAndDelete(exp._id);
+  const redis = await getRedisConnection();
+  redis.del(exp._id?.toString() || "");
   return res;
 }

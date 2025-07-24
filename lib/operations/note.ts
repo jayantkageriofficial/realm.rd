@@ -151,5 +151,7 @@ export async function dlt(id: string, user: User): Promise<Notes | null> {
   });
   if (!note || note.user?.username !== user.username) return null;
   const res: Notes | null = await NotesSchema.findByIdAndDelete(note._id);
+  const redis = await getRedisConnection();
+  redis.del(note._id?.toString() || "");
   return res;
 }
