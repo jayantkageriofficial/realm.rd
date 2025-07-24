@@ -39,6 +39,11 @@ import {
   Separator,
   tablePlugin,
   toolbarPlugin,
+  InsertTable,
+  directivesPlugin,
+  frontmatterPlugin,
+  jsxPlugin,
+  sandpackPlugin,
 } from "@mdxeditor/editor";
 
 const plugins = (
@@ -53,6 +58,10 @@ const plugins = (
     linkDialogPlugin(),
     imagePlugin({}),
     tablePlugin(),
+    jsxPlugin(),
+    sandpackPlugin(),
+    directivesPlugin(),
+    frontmatterPlugin(),
     codeBlockPlugin({ defaultCodeBlockLanguage: "txt" }),
     codeMirrorPlugin({
       codeBlockLanguages: {
@@ -97,6 +106,7 @@ const plugins = (
               <Separator />
               <InsertCodeBlock />
               <CodeToggle />
+              <InsertTable />
               <Separator />
               <CreateLink />
               <InsertImage />
