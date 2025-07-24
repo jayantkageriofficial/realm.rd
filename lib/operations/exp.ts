@@ -38,7 +38,7 @@ export async function create(month: string, content: string, user: User) {
   });
   const redis = await getRedisConnection();
   redis.set(
-    exp._id,
+    (exp._id || "").toString(),
     await generateContentChecksum(
       exp.id,
       name,

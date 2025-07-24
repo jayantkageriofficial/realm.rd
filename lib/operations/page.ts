@@ -44,7 +44,7 @@ export async function create(
   });
   const redis = await getRedisConnection();
   redis.set(
-    page._id,
+    (page._id || "").toString(),
     await generateContentChecksum(
       page.id,
       name,
