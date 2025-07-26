@@ -37,8 +37,8 @@ export async function create(month: string, content: string, user: User) {
     user,
   });
   const redis = await getRedisConnection();
-  redis.set(
-    (exp._id || "").toString(),
+  await redis.set(
+    exp._id?.toString() || "",
     await generateContentChecksum(
       exp.id,
       name,
@@ -69,7 +69,7 @@ export async function get(id: string, user: User): Promise<Expenditure | null> {
       exp.user.username
     ))
   ) {
-    await lockdown(false, user.username, "internal");
+    await lockdown(false, user.username, `internal::expenditure::${id}`);
     return null;
   }
 
@@ -128,14 +128,14 @@ export async function edit(
   });
 
   const redis = await getRedisConnection();
-  redis.set(
+  await redis.set(
     exp._id?.toString() || "",
     await generateContentChecksum(
-      exp.id,
+      res.id,
       name,
       encrypted,
-      exp.timestamp as Date,
-      exp.user.username
+      res.timestamp,
+      user.username
     )
   );
 

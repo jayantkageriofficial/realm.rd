@@ -31,7 +31,11 @@ $REALM $${category.toUpperCase()}
 ${message}
 
 Host: ${Config.DOMAIN}
-IP Address: \`${ip}\` (ipinfo.io/${ip})
+${
+  ip.startsWith("internal")
+    ? `Comment: ${ip}`
+    : `IP Address: \`${ip}\` (ipinfo.io/${ip})`
+} 
 Timestamp: ${getDate(date)}
 
 __realm.rd__

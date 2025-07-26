@@ -34,7 +34,7 @@ export default function DltPage(props: { id: string }) {
         const res = await dltNote(props.id);
         if (res) {
           toast.success("Deleted the Note", { id });
-          redirect("/");
+          redirect("/notes");
         } else toast.error("Internal Error", { id });
       }}
       className="flex items-center px-2 text-gray-200 cursor-pointer"

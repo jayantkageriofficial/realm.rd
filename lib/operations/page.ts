@@ -43,8 +43,8 @@ export async function create(
     user,
   });
   const redis = await getRedisConnection();
-  redis.set(
-    (page._id || "").toString(),
+  await redis.set(
+    page._id?.toString() || "",
     await generateContentChecksum(
       page.id,
       name,
@@ -77,7 +77,7 @@ export async function get(id: string, user: User): Promise<Page | null> {
       page.user.username
     ))
   ) {
-    await lockdown(false, user.username, "internal");
+    await lockdown(false, user.username, `internal::page::${id}`);
     return null;
   }
 
@@ -140,14 +140,14 @@ export async function edit(
   });
 
   const redis = await getRedisConnection();
-  redis.set(
+  await redis.set(
     page._id?.toString() || "",
     await generateContentChecksum(
-      page.id,
+      res.id,
       name,
       encrypted,
-      page.timestamp as Date,
-      page.user.username
+      res.timestamp,
+      user.username
     )
   );
 

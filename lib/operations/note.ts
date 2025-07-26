@@ -36,15 +36,16 @@ export async function create(title: string, content: string, user: User) {
     content: encrypted,
     user,
   });
+
   const redis = await getRedisConnection();
-  redis.set(
-    (note._id || "").toString(),
+  await redis.set(
+    note._id?.toString() || "",
     await generateContentChecksum(
       note.id,
       name,
       encrypted,
       note.timestamp,
-      user.username
+      note.user.username
     )
   );
   return note;
@@ -70,7 +71,7 @@ export async function get(id: string, user: User): Promise<Notes | null> {
       note.user.username
     ))
   ) {
-    await lockdown(false, user.username, "internal");
+    await lockdown(false, user.username, `internal::notes::${id}`);
     return null;
   }
 
@@ -131,14 +132,14 @@ export async function edit(
   });
 
   const redis = await getRedisConnection();
-  redis.set(
-    note._id?.toString() || "",
+  await redis.set(
+    res._id?.toString() || "",
     await generateContentChecksum(
-      note.id,
+      res.id,
       name,
       encrypted,
-      note.timestamp as Date,
-      note.user.username
+      res.timestamp,
+      user.username
     )
   );
 
