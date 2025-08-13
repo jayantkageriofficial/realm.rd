@@ -24,6 +24,7 @@ export const categories = [
   "Food",
   "Utility",
   "Investment",
+  "Lending",
   "Hospital",
   "Entertainment",
   "Shopping",
@@ -249,7 +250,9 @@ export const exportToExcel = async (
       Account: string;
       Date: string;
       Description: string;
-      Amount: number;
+      Credit: number;
+      Debit: number;
+      Balance: number;
       Type: "Credit" | "Debit";
       Category: string;
       AccountId: string;
@@ -265,7 +268,9 @@ export const exportToExcel = async (
           Account: account.name,
           Date: t.date,
           Description: t.description,
-          Amount: t.amount,
+          Credit: t.type === "Credit" ? t.amount : 0,
+          Debit: t.type === "Debit" ? Math.abs(t.amount) : 0,
+          Balance: runningBalance,
           Type: t.type,
           Category: t.category,
           AccountId: accountId,
@@ -280,10 +285,10 @@ export const exportToExcel = async (
             })
             .replace(/\//g, "-"),
           Description: t.description,
-          Amount: t.amount,
-          Type: t.type,
-          Category: t.category,
+          Credit: t.type === "Credit" ? t.amount : 0,
+          Debit: t.type === "Debit" ? Math.abs(t.amount) : 0,
           Balance: runningBalance,
+          Category: t.category,
         };
       });
 
@@ -320,7 +325,8 @@ export const exportToExcel = async (
       for (let row = 1; row <= range.e.r; row++) {
         for (let col = range.s.c; col <= range.e.c; col++) {
           const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-          if (!ws[cellAddress]) continue;
+
+          if (!ws[cellAddress]) ws[cellAddress] = { v: null, t: "z" };
 
           ws[cellAddress].s = {
             font: { color: { rgb: "000000" } },
@@ -341,7 +347,7 @@ export const exportToExcel = async (
             };
           }
 
-          if (col === 5) {
+          if (col === 3) {
             ws[cellAddress].s.numFmt = "₹#,##0.00";
             ws[cellAddress].s.alignment = {
               horizontal: "right",
@@ -349,7 +355,15 @@ export const exportToExcel = async (
             };
           }
 
-          if (col === 3 || col === 4)
+          if (col === 4) {
+            ws[cellAddress].s.numFmt = "₹#,##0.00";
+            ws[cellAddress].s.alignment = {
+              horizontal: "right",
+              vertical: "center",
+            };
+          }
+
+          if (col === 5)
             ws[cellAddress].s.alignment = {
               horizontal: "center",
               vertical: "center",
@@ -358,12 +372,12 @@ export const exportToExcel = async (
       }
 
       ws["!cols"] = [
-        { width: 12 },
-        { width: 25 },
-        { width: 15 },
-        { width: 10 },
-        { width: 15 },
-        { width: 15 },
+        { width: 12 }, // Date
+        { width: 25 }, // Description
+        { width: 15 }, // Credit
+        { width: 15 }, // Debit
+        { width: 15 }, // Balance
+        { width: 15 }, // Category
       ];
 
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -373,7 +387,15 @@ export const exportToExcel = async (
       (a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()
     );
 
+    const accountBalances: { [accountId: string]: number } = {};
     const summaryData = allTransactions.map((t) => {
+      if (!accountBalances[t.AccountId]) {
+        accountBalances[t.AccountId] = 0;
+      }
+
+      const amount = t.Type === "Credit" ? t.Credit : -t.Debit;
+      accountBalances[t.AccountId] += amount;
+
       return {
         Account: t.Account,
         Date: new Date(t.Date)
@@ -384,13 +406,24 @@ export const exportToExcel = async (
           })
           .replace(/\//g, "-"),
         Description: t.Description,
-        Amount: t.Amount,
-        Type: t.Type,
+        Credit: t.Type === "Credit" ? t.Credit : 0,
+        Debit: t.Type === "Debit" ? t.Debit : 0,
+        Balance: accountBalances[t.AccountId],
         Category: t.Category,
       };
     });
 
-    const summaryWS = XLSX.utils.json_to_sheet(summaryData);
+    const summaryWSData = summaryData.map((item) => ({
+      Account: item.Account,
+      Date: item.Date,
+      Description: item.Description,
+      Credit: item.Credit,
+      Debit: item.Debit,
+      Balance: item.Balance,
+      Category: item.Category,
+    }));
+
+    const summaryWS = XLSX.utils.json_to_sheet(summaryWSData);
 
     const dataRange = XLSX.utils.decode_range(summaryWS["!ref"] || "A1");
     const lastDataRow = dataRange.e.r;
@@ -400,7 +433,6 @@ export const exportToExcel = async (
         Category: string;
         Credit: number;
         Debit: number;
-        Net: number;
       };
     } = {};
 
@@ -410,29 +442,25 @@ export const exportToExcel = async (
           Category: t.Category,
           Credit: 0,
           Debit: 0,
-          Net: 0,
         };
 
-      if (t.Type === "Credit") categoryData[t.Category].Credit += t.Amount;
-      else categoryData[t.Category].Debit += Math.abs(t.Amount);
-      categoryData[t.Category].Net += t.Amount;
+      if (t.Type === "Credit") categoryData[t.Category].Credit += t.Credit;
+      else categoryData[t.Category].Debit += t.Debit;
     });
 
     const pivotData = Object.values(categoryData);
-
-    pivotData.sort((a, b) => b.Net - a.Net);
+    pivotData.sort((a, b) => b.Credit - b.Debit - (a.Credit - a.Debit));
 
     const totalRow = {
       Category: "TOTAL",
       Credit: pivotData.reduce((sum, item) => sum + item.Credit, 0),
       Debit: pivotData.reduce((sum, item) => sum + item.Debit, 0),
-      Net: pivotData.reduce((sum, item) => sum + item.Net, 0),
     };
 
     pivotData.push(totalRow);
 
     const pivotStartRow = lastDataRow + 3;
-    const headers = ["Category", "Credit", "Debit", "Net"];
+    const headers = ["Category", "Credit", "Debit"]; // Removed Net column
     headers.forEach((header, colIndex) => {
       const cellAddress = XLSX.utils.encode_cell({
         r: pivotStartRow,
@@ -471,58 +499,54 @@ export const exportToExcel = async (
       const debitCell = XLSX.utils.encode_cell({ r: currentRow, c: 2 });
       summaryWS[debitCell] = { v: row.Debit, t: "n" };
 
-      const netCell = XLSX.utils.encode_cell({ r: currentRow, c: 3 });
-      summaryWS[netCell] = { v: row.Net, t: "n" };
+      [categoryCell, creditCell, debitCell].forEach((cell, colIndex) => {
+        summaryWS[cell].s = {
+          font: {
+            color: { rgb: "000000" },
+            bold: isTotal,
+          },
+          border: {
+            top: { style: "thin", color: { rgb: "000000" } },
+            bottom: { style: "thin", color: { rgb: "000000" } },
+            left: { style: "thin", color: { rgb: "000000" } },
+            right: { style: "thin", color: { rgb: "000000" } },
+          },
+          alignment: { vertical: "center" },
+          ...(isTotal && {
+            fill: {
+              patternType: "solid",
+              fgColor: { rgb: "FFFF00" },
+            },
+          }),
+        };
 
-      [categoryCell, creditCell, debitCell, netCell].forEach(
-        (cell, colIndex) => {
-          summaryWS[cell].s = {
-            font: {
-              color: { rgb: "000000" },
-              bold: isTotal,
-            },
-            border: {
-              top: { style: "thin", color: { rgb: "000000" } },
-              bottom: { style: "thin", color: { rgb: "000000" } },
-              left: { style: "thin", color: { rgb: "000000" } },
-              right: { style: "thin", color: { rgb: "000000" } },
-            },
-            alignment: { vertical: "center" },
-            ...(isTotal && {
-              fill: {
-                patternType: "solid",
-                fgColor: { rgb: "FFFF00" },
-              },
-            }),
+        if (colIndex >= 1) {
+          summaryWS[cell].s.numFmt = "₹#,##0.00";
+          summaryWS[cell].s.alignment = {
+            horizontal: "right",
+            vertical: "center",
           };
-
-          if (colIndex >= 1) {
-            summaryWS[cell].s.numFmt = "₹#,##0.00";
-            summaryWS[cell].s.alignment = {
-              horizontal: "right",
-              vertical: "center",
-            };
-          }
         }
-      );
+      });
     });
 
     const lastPivotRow = pivotStartRow + pivotData.length;
     summaryWS["!ref"] = XLSX.utils.encode_range({
       s: { r: 0, c: 0 },
-      e: { r: lastPivotRow, c: 5 },
+      e: { r: lastPivotRow, c: 6 },
     });
 
     const summaryRange = XLSX.utils.decode_range(
       XLSX.utils.encode_range({
         s: { r: 0, c: 0 },
-        e: { r: lastDataRow, c: 5 },
+        e: { r: lastDataRow, c: 6 },
       })
     );
 
     for (let col = summaryRange.s.c; col <= summaryRange.e.c; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: 0, c: col });
-      if (!summaryWS[cellAddress]) continue;
+
+      if (!summaryWS[cellAddress]) summaryWS[cellAddress] = { v: "", t: "s" };
 
       summaryWS[cellAddress].s = {
         font: {
@@ -546,7 +570,9 @@ export const exportToExcel = async (
     for (let row = 1; row <= summaryRange.e.r; row++) {
       for (let col = summaryRange.s.c; col <= summaryRange.e.c; col++) {
         const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
-        if (!summaryWS[cellAddress]) continue;
+
+        if (!summaryWS[cellAddress])
+          summaryWS[cellAddress] = { v: null, t: "z" };
 
         summaryWS[cellAddress].s = {
           font: { color: { rgb: "000000" } },
@@ -567,12 +593,27 @@ export const exportToExcel = async (
           };
         }
 
-        if (col === 4 || col === 5) {
+        if (col === 4) {
+          summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
+          summaryWS[cellAddress].s.alignment = {
+            horizontal: "right",
+            vertical: "center",
+          };
+        }
+
+        if (col === 5) {
+          summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
+          summaryWS[cellAddress].s.alignment = {
+            horizontal: "right",
+            vertical: "center",
+          };
+        }
+
+        if (col === 6)
           summaryWS[cellAddress].s.alignment = {
             horizontal: "center",
             vertical: "center",
           };
-        }
       }
     }
 
@@ -580,8 +621,9 @@ export const exportToExcel = async (
       { width: 20 }, // Account
       { width: 12 }, // Date
       { width: 25 }, // Description
-      { width: 15 }, // Amount
-      { width: 10 }, // Type
+      { width: 15 }, // Credit
+      { width: 15 }, // Debit
+      { width: 15 }, // Balance
       { width: 15 }, // Category
     ];
 
