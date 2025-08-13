@@ -250,8 +250,8 @@ export const exportToExcel = async (
       Account: string;
       Date: string;
       Description: string;
-      Credit: number;
-      Debit: number;
+      Debit: number | "";
+      Credit: number | "";
       Balance: number;
       Type: "Credit" | "Debit";
       Category: string;
@@ -268,8 +268,8 @@ export const exportToExcel = async (
           Account: account.name,
           Date: t.date,
           Description: t.description,
-          Credit: t.type === "Credit" ? t.amount : 0,
-          Debit: t.type === "Debit" ? Math.abs(t.amount) : 0,
+          Debit: t.type === "Debit" ? Math.abs(t.amount) : "",
+          Credit: t.type === "Credit" ? t.amount : "",
           Balance: runningBalance,
           Type: t.type,
           Category: t.category,
@@ -285,8 +285,8 @@ export const exportToExcel = async (
             })
             .replace(/\//g, "-"),
           Description: t.description,
-          Credit: t.type === "Credit" ? t.amount : 0,
-          Debit: t.type === "Debit" ? Math.abs(t.amount) : 0,
+          Debit: t.type === "Debit" ? Math.abs(t.amount) : "",
+          Credit: t.type === "Credit" ? t.amount : "",
           Balance: runningBalance,
           Category: t.category,
         };
@@ -374,8 +374,8 @@ export const exportToExcel = async (
       ws["!cols"] = [
         { width: 12 }, // Date
         { width: 25 }, // Description
-        { width: 15 }, // Credit
         { width: 15 }, // Debit
+        { width: 15 }, // Credit
         { width: 15 }, // Balance
         { width: 15 }, // Category
       ];
@@ -393,7 +393,8 @@ export const exportToExcel = async (
         accountBalances[t.AccountId] = 0;
       }
 
-      const amount = t.Type === "Credit" ? t.Credit : -t.Debit;
+      const amount =
+        t.Type === "Credit" ? (t.Credit as number) : -(t.Debit as number);
       accountBalances[t.AccountId] += amount;
 
       return {
@@ -406,8 +407,8 @@ export const exportToExcel = async (
           })
           .replace(/\//g, "-"),
         Description: t.Description,
-        Credit: t.Type === "Credit" ? t.Credit : 0,
-        Debit: t.Type === "Debit" ? t.Debit : 0,
+        Debit: t.Type === "Debit" ? t.Debit : "",
+        Credit: t.Type === "Credit" ? t.Credit : "",
         Balance: accountBalances[t.AccountId],
         Category: t.Category,
       };
@@ -417,8 +418,8 @@ export const exportToExcel = async (
       Account: item.Account,
       Date: item.Date,
       Description: item.Description,
-      Credit: item.Credit,
       Debit: item.Debit,
+      Credit: item.Credit,
       Balance: item.Balance,
       Category: item.Category,
     }));
@@ -444,8 +445,9 @@ export const exportToExcel = async (
           Debit: 0,
         };
 
-      if (t.Type === "Credit") categoryData[t.Category].Credit += t.Credit;
-      else categoryData[t.Category].Debit += t.Debit;
+      if (t.Type === "Credit")
+        categoryData[t.Category].Credit += t.Credit as number;
+      else categoryData[t.Category].Debit += t.Debit as number;
     });
 
     const pivotData = Object.values(categoryData);
@@ -453,14 +455,14 @@ export const exportToExcel = async (
 
     const totalRow = {
       Category: "TOTAL",
-      Credit: pivotData.reduce((sum, item) => sum + item.Credit, 0),
       Debit: pivotData.reduce((sum, item) => sum + item.Debit, 0),
+      Credit: pivotData.reduce((sum, item) => sum + item.Credit, 0),
     };
 
     pivotData.push(totalRow);
 
     const pivotStartRow = lastDataRow + 3;
-    const headers = ["Category", "Credit", "Debit"]; // Removed Net column
+    const headers = ["Category", "Debit", "Credit"]; // Swapped order
     headers.forEach((header, colIndex) => {
       const cellAddress = XLSX.utils.encode_cell({
         r: pivotStartRow,
@@ -493,13 +495,13 @@ export const exportToExcel = async (
       const categoryCell = XLSX.utils.encode_cell({ r: currentRow, c: 0 });
       summaryWS[categoryCell] = { v: row.Category, t: "s" };
 
-      const creditCell = XLSX.utils.encode_cell({ r: currentRow, c: 1 });
-      summaryWS[creditCell] = { v: row.Credit, t: "n" };
-
-      const debitCell = XLSX.utils.encode_cell({ r: currentRow, c: 2 });
+      const debitCell = XLSX.utils.encode_cell({ r: currentRow, c: 1 });
       summaryWS[debitCell] = { v: row.Debit, t: "n" };
 
-      [categoryCell, creditCell, debitCell].forEach((cell, colIndex) => {
+      const creditCell = XLSX.utils.encode_cell({ r: currentRow, c: 2 });
+      summaryWS[creditCell] = { v: row.Credit, t: "n" };
+
+      [categoryCell, debitCell, creditCell].forEach((cell, colIndex) => {
         summaryWS[cell].s = {
           font: {
             color: { rgb: "000000" },
@@ -621,8 +623,8 @@ export const exportToExcel = async (
       { width: 20 }, // Account
       { width: 12 }, // Date
       { width: 25 }, // Description
-      { width: 15 }, // Credit
       { width: 15 }, // Debit
+      { width: 15 }, // Credit
       { width: 15 }, // Balance
       { width: 15 }, // Category
     ];
