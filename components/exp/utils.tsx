@@ -433,6 +433,7 @@ export const exportToExcel = async (
       Description: "",
       Debit: "",
       Credit: "",
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       Balance: null as any,
       Category: "",
     });
