@@ -414,6 +414,39 @@ export const exportToExcel = async (
       };
     });
 
+    const totalBalance = Object.values(accountBalances).reduce(
+      (sum, balance) => sum + balance,
+      0
+    );
+
+    const totalDebits = allTransactions
+      .filter((t) => t.Type === "Debit")
+      .reduce((sum, t) => sum + (t.Debit as number), 0);
+
+    const totalCredits = allTransactions
+      .filter((t) => t.Type === "Credit")
+      .reduce((sum, t) => sum + (t.Credit as number), 0);
+
+    summaryData.push({
+      Account: "",
+      Date: "",
+      Description: "",
+      Debit: "",
+      Credit: "",
+      Balance: null as any,
+      Category: "",
+    });
+
+    summaryData.push({
+      Account: "",
+      Date: "",
+      Description: "TOTAL",
+      Debit: totalDebits,
+      Credit: totalCredits,
+      Balance: totalBalance,
+      Category: "",
+    });
+
     const summaryWSData = summaryData.map((item) => ({
       Account: item.Account,
       Date: item.Date,
@@ -428,6 +461,74 @@ export const exportToExcel = async (
 
     const dataRange = XLSX.utils.decode_range(summaryWS["!ref"] || "A1");
     const lastDataRow = dataRange.e.r;
+    const emptyRow = lastDataRow - 1;
+    const balanceRow = lastDataRow;
+
+    for (let col = 0; col <= 6; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: emptyRow, c: col });
+      if (!summaryWS[cellAddress]) {
+        summaryWS[cellAddress] = { v: "", t: "s" };
+      }
+
+      summaryWS[cellAddress].s = {
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+      };
+    }
+
+    for (let col = 0; col <= 6; col++) {
+      const cellAddress = XLSX.utils.encode_cell({ r: balanceRow, c: col });
+      if (!summaryWS[cellAddress]) {
+        summaryWS[cellAddress] = { v: "", t: "s" };
+      }
+
+      summaryWS[cellAddress].s = {
+        font: {
+          bold: true,
+          color: { rgb: "000000" },
+        },
+        fill: {
+          patternType: "solid",
+          fgColor: { rgb: "FFFF00" },
+        },
+        border: {
+          top: { style: "thin", color: { rgb: "000000" } },
+          bottom: { style: "thin", color: { rgb: "000000" } },
+          left: { style: "thin", color: { rgb: "000000" } },
+          right: { style: "thin", color: { rgb: "000000" } },
+        },
+        alignment: { vertical: "center" },
+      };
+
+      if (col === 2) {
+        summaryWS[cellAddress].s.alignment = {
+          horizontal: "center",
+          vertical: "center",
+        };
+      } else if (col === 3) {
+        summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
+        summaryWS[cellAddress].s.alignment = {
+          horizontal: "right",
+          vertical: "center",
+        };
+      } else if (col === 4) {
+        summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
+        summaryWS[cellAddress].s.alignment = {
+          horizontal: "right",
+          vertical: "center",
+        };
+      } else if (col === 5) {
+        summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
+        summaryWS[cellAddress].s.alignment = {
+          horizontal: "right",
+          vertical: "center",
+        };
+      }
+    }
 
     const categoryData: {
       [category: string]: {
@@ -541,7 +642,7 @@ export const exportToExcel = async (
     const summaryRange = XLSX.utils.decode_range(
       XLSX.utils.encode_range({
         s: { r: 0, c: 0 },
-        e: { r: lastDataRow, c: 6 },
+        e: { r: emptyRow - 1, c: 6 },
       })
     );
 
