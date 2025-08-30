@@ -248,7 +248,7 @@ export const exportToExcel = async (
 
     const allTransactions: {
       Account: string;
-      Date: string;
+      Date: Date;
       Description: string;
       Debit: number | "";
       Credit: number | "";
@@ -264,9 +264,11 @@ export const exportToExcel = async (
 
       const dataForSheet = accountTransactions.map((t) => {
         runningBalance += t.amount;
+        const dateObj = new Date(t.date);
+
         allTransactions.push({
           Account: account.name,
-          Date: t.date,
+          Date: dateObj,
           Description: t.description,
           Debit: t.type === "Debit" ? Math.abs(t.amount) : "",
           Credit: t.type === "Credit" ? t.amount : "",
@@ -277,13 +279,7 @@ export const exportToExcel = async (
         });
 
         return {
-          Date: new Date(t.date)
-            .toLocaleDateString("en-IN", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })
-            .replace(/\//g, "-"),
+          Date: dateObj,
           Description: t.description,
           Debit: t.type === "Debit" ? Math.abs(t.amount) : "",
           Credit: t.type === "Credit" ? t.amount : "",
@@ -339,35 +335,36 @@ export const exportToExcel = async (
             alignment: { vertical: "center" },
           };
 
-          if (col === 2) {
-            ws[cellAddress].s.numFmt = "₹#,##0.00";
-            ws[cellAddress].s.alignment = {
-              horizontal: "right",
-              vertical: "center",
-            };
-          }
-
-          if (col === 3) {
-            ws[cellAddress].s.numFmt = "₹#,##0.00";
-            ws[cellAddress].s.alignment = {
-              horizontal: "right",
-              vertical: "center",
-            };
-          }
-
-          if (col === 4) {
-            ws[cellAddress].s.numFmt = "₹#,##0.00";
-            ws[cellAddress].s.alignment = {
-              horizontal: "right",
-              vertical: "center",
-            };
-          }
-
-          if (col === 5)
+          if (col === 0) {
+            ws[cellAddress].s.numFmt = "dd-mm-yyyy";
             ws[cellAddress].s.alignment = {
               horizontal: "center",
               vertical: "center",
             };
+          } else if (col === 2) {
+            ws[cellAddress].s.numFmt = "₹#,##0.00";
+            ws[cellAddress].s.alignment = {
+              horizontal: "right",
+              vertical: "center",
+            };
+          } else if (col === 3) {
+            ws[cellAddress].s.numFmt = "₹#,##0.00";
+            ws[cellAddress].s.alignment = {
+              horizontal: "right",
+              vertical: "center",
+            };
+          } else if (col === 4) {
+            ws[cellAddress].s.numFmt = "₹#,##0.00";
+            ws[cellAddress].s.alignment = {
+              horizontal: "right",
+              vertical: "center",
+            };
+          } else if (col === 5) {
+            ws[cellAddress].s.alignment = {
+              horizontal: "center",
+              vertical: "center",
+            };
+          }
         }
       }
 
@@ -383,9 +380,7 @@ export const exportToExcel = async (
       XLSX.utils.book_append_sheet(wb, ws, sheetName);
     });
 
-    allTransactions.sort(
-      (a, b) => new Date(a.Date).getTime() - new Date(b.Date).getTime()
-    );
+    allTransactions.sort((a, b) => a.Date.getTime() - b.Date.getTime());
 
     const accountBalances: { [accountId: string]: number } = {};
     const summaryData = allTransactions.map((t) => {
@@ -399,13 +394,7 @@ export const exportToExcel = async (
 
       return {
         Account: t.Account,
-        Date: new Date(t.Date)
-          .toLocaleDateString("en-IN", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-          })
-          .replace(/\//g, "-"),
+        Date: t.Date,
         Description: t.Description,
         Debit: t.Type === "Debit" ? t.Debit : "",
         Credit: t.Type === "Credit" ? t.Credit : "",
@@ -429,6 +418,7 @@ export const exportToExcel = async (
 
     summaryData.push({
       Account: "",
+      // @ts-expect-error: Type mismatch for Date to empty string
       Date: "",
       Description: "",
       Debit: "",
@@ -440,6 +430,7 @@ export const exportToExcel = async (
 
     summaryData.push({
       Account: "",
+      // @ts-expect-error: Type mismatch for Date to empty string
       Date: "",
       Description: "TOTAL",
       Debit: totalDebits,
@@ -467,9 +458,7 @@ export const exportToExcel = async (
 
     for (let col = 0; col <= 6; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: emptyRow, c: col });
-      if (!summaryWS[cellAddress]) {
-        summaryWS[cellAddress] = { v: "", t: "s" };
-      }
+      if (!summaryWS[cellAddress]) summaryWS[cellAddress] = { v: "", t: "s" };
 
       summaryWS[cellAddress].s = {
         border: {
@@ -483,9 +472,7 @@ export const exportToExcel = async (
 
     for (let col = 0; col <= 6; col++) {
       const cellAddress = XLSX.utils.encode_cell({ r: balanceRow, c: col });
-      if (!summaryWS[cellAddress]) {
-        summaryWS[cellAddress] = { v: "", t: "s" };
-      }
+      if (!summaryWS[cellAddress]) summaryWS[cellAddress] = { v: "", t: "s" };
 
       summaryWS[cellAddress].s = {
         font: {
@@ -689,31 +676,31 @@ export const exportToExcel = async (
           alignment: { vertical: "center" },
         };
 
-        if (col === 3) {
+        if (col === 1) {
+          summaryWS[cellAddress].s.numFmt = "dd-mm-yyyy";
+          summaryWS[cellAddress].s.alignment = {
+            horizontal: "center",
+            vertical: "center",
+          };
+        } else if (col === 3) {
           summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
           summaryWS[cellAddress].s.alignment = {
             horizontal: "right",
             vertical: "center",
           };
-        }
-
-        if (col === 4) {
+        } else if (col === 4) {
           summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
           summaryWS[cellAddress].s.alignment = {
             horizontal: "right",
             vertical: "center",
           };
-        }
-
-        if (col === 5) {
+        } else if (col === 5) {
           summaryWS[cellAddress].s.numFmt = "₹#,##0.00";
           summaryWS[cellAddress].s.alignment = {
             horizontal: "right",
             vertical: "center",
           };
-        }
-
-        if (col === 6)
+        } else if (col === 6)
           summaryWS[cellAddress].s.alignment = {
             horizontal: "center",
             vertical: "center",
