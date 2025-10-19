@@ -40,7 +40,7 @@ async function verify(ip: string): Promise<boolean> {
   return false;
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const ping = isConnected().both;
   const locked = req.nextUrl.pathname === "/locked";
   const logout = req.nextUrl.pathname === "/auth/logout";
