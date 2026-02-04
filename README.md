@@ -80,28 +80,17 @@ Below is a list of all the environment variables required by the project along w
 
 - `TG_CHAT_ID` (_optional_): This variable specifies the Telegram Chat ID, which is used for sending alerts.
 
-## ⚡ Technologies Used
+## ⚡ Tech Stack
 
-- [Node.js](https://nodejs.org/en/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Next.js](https://nextjs.org/)
-- [Tailwind CSS](https://tailwindcss.com/)
-- [MongoDB](https://www.mongodb.com/)
-- [Mongoose](https://mongoosejs.com/)
-- [Redis](https://redis.io/)
-- [JWT](https://jwt.io/)
-- [Argon2](https://www.npmjs.com/package/argon2)
-- [Libsodium](https://github.com/jedisct1/libsodium.js)
-- [SheetJS](https://www.npmjs.com/package/sheetjs-style)
-- [CodeMirror](https://codemirror.net/)
-- [MDX Editor](https://github.com/mdx-editor/editor)
-- [Mantine React Table](https://www.mantine-react-table.com/)
-- [React Use](https://github.com/streamich/react-use)
-- [Nano ID](https://github.com/ai/nanoid)
-- [Proper Lockfile](https://www.npmjs.com/package/proper-lockfile)
-- [React Hot Toast](https://react-hot-toast.com/)
-- [Telegram Bot API](https://core.telegram.org/bots/api)
-- [PNPM](https://pnpm.io/)
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=nodejs,ts,nextjs,tailwind,mongodb,redis,react,pnpm" alt="Tech Stack" />
+</p>
+
+<p align="center">
+  <sub>Node.js · TypeScript · Next.js · Tailwind CSS · MongoDB · Redis · React · PNPM</sub>
+</p>
+
+_Also: Mongoose, JWT, Argon2, Libsodium, SheetJS, CodeMirror, MDX Editor, Mantine React Table, React Use, Nano ID, Proper Lockfile, React Hot Toast, Telegram Bot API_
 
 ## 📜 License
 
