@@ -20,25 +20,28 @@ import type { NextConfig } from "next";
 
 const DEVELOPMENT = process.env.NODE_ENV !== "production";
 
-const DOMAIN_SCHEMA = DEVELOPMENT
-  ? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
-  : process.env.NEXT_PUBLIC_DOMAIN;
+const DOMAIN_SCHEMA = new URL(
+  DEVELOPMENT
+    ? process.env.NEXT_PUBLIC_DEV_SERVER || "http://localhost:3000"
+    : process.env.NEXT_PUBLIC_DOMAIN || "http://localhost:3000",
+);
 const date = new Date();
 const BUILD_ID = DEVELOPMENT
   ? "development"
   : `realm-production_${Math.random()
       .toString(36)
       .substring(2, 13)}+${date.getFullYear()}${String(
-      date.getMonth() + 1
+      date.getMonth() + 1,
     ).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
-  assetPrefix: DOMAIN_SCHEMA,
+  // assetPrefix: DOMAIN_SCHEMA.host,
   env: {
     BUILD_ID,
   },
+  output: "standalone",
   compiler: {
     removeConsole: DEVELOPMENT
       ? false
@@ -49,9 +52,6 @@ const nextConfig: NextConfig = {
   },
   images: {
     dangerouslyAllowSVG: true,
-  },
-  experimental: {
-    devtoolSegmentExplorer: true,
   },
   async headers() {
     return [
@@ -88,11 +88,11 @@ const nextConfig: NextConfig = {
         new Date().getFullYear() === 2025
           ? 2025
           : `2025 - ${new Date().getFullYear()}`
-      } Jayant Hegde Kageri <https://jayantkageri.in/>`
+      } Jayant Hegde Kageri <https://jayantkageri.in/>`,
     );
     console.log(
       "➔",
-      "Licensed under the Terms and Conditions of GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)"
+      "Licensed under the Terms and Conditions of GNU Affero General Public License v3.0 or later (AGPL-3.0-or-later)",
     );
     console.log();
 

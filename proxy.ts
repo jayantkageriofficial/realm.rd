@@ -27,7 +27,6 @@ export const config = {
   matcher: [
     "/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)",
   ],
-  runtime: "nodejs",
 };
 
 async function verify(ip: string): Promise<boolean> {
@@ -68,7 +67,7 @@ export async function proxy(req: NextRequest) {
       return NextResponse.redirect(
         `${Config.DOMAIN}/auth/login?path=${
           logout ? "/" : req.nextUrl.pathname
-        }`
+        }`,
       );
 
     if (verification && login) return NextResponse.redirect(Config.DOMAIN);
